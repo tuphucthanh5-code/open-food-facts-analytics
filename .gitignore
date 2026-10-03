@@ -1,0 +1,18 @@
+﻿venv/
+__pycache__/
+*.pyc
+
+# Bỏ qua dữ liệu nặng nhưng giữ lại thư mục
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+data/final/*
+!data/final/.gitkeep
+
+# Bỏ qua logs
+logs/*.log
+!logs/.gitkeep
+*.db
+*.sqlite3
+.ipynb_checkpoints/
