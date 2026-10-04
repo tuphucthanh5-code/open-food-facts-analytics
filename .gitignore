@@ -1,18 +1,30 @@
-﻿venv/
+# Môi trường và bí mật
+.env
+venv/
+.venv/
 __pycache__/
 *.pyc
+.ipynb_checkpoints/
+.pytest_cache/
+.idea/
+.vscode/
 
-# Bỏ qua dữ liệu nặng nhưng giữ lại thư mục
+# Dữ liệu nặng, giữ lại thư mục
 data/raw/*
 !data/raw/.gitkeep
 data/processed/*
 !data/processed/.gitkeep
 data/final/*
 !data/final/.gitkeep
-
-# Bỏ qua logs
-logs/*.log
-!logs/.gitkeep
+*.jsonl.gz
+*.parquet
+*.csv
+!data/sample/*.csv
 *.db
 *.sqlite3
-.ipynb_checkpoints/
+
+# Log và mô hình
+logs/*.log
+!logs/.gitkeep
+*.pkl
+*.joblib
