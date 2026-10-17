@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-17T18:30:31+00:00",
+  "generated_at": "2026-10-17T19:13:07+00:00",
   "params": {
     "max_ingredients": 150,
     "few_ingredients": 1,
@@ -134,12 +134,8 @@
       212
     ]
   ],
-  "brands_unique": 10829,
+  "brands_unique": 10828,
   "brands_top": [
-    [
-      NaN,
-      4556
-    ],
     [
       "carrefour",
       328
@@ -195,6 +191,10 @@
     [
       "albert-heijn",
       93
+    ],
+    [
+      "monoprix",
+      88
     ]
   ],
   "groups": {

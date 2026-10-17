@@ -347,7 +347,7 @@ def consistency_table(final):
 def build_report(X, y, final, funnel, norm_stats, dup_stats, max_ingredients):
     n = len(X)
     countries = Counter(c for tags in X["countries_tags"] if tags for c in tags)
-    brands = Counter(b for b in X["brand"] if b)
+    brands = Counter(b for b in X["brand"] if isinstance(b, str) and b)   # NaN là truthy: phải kiểm tra kiểu
     groups = X["group_id"].value_counts()
     return {
         "params": {"max_ingredients": max_ingredients, "few_ingredients": FEW_INGREDIENTS,

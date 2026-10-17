@@ -1,6 +1,6 @@
 # Báo cáo làm sạch dữ liệu (Bước 4)
 
-- Thời điểm: 2026-10-17T18:30:31+00:00
+- Thời điểm: 2026-10-17T19:13:07+00:00
 - Đầu vào: **30000** dòng; giữ lại: **29904** dòng (99.7%)
 - Tham số: số thành phần tối đa 150; gắn cờ khi ≤ 1 thành phần; bỏ thẻ quốc gia en:world
 
@@ -55,11 +55,10 @@
 - Số nhóm: 15141; nhóm lớn nhất `brand:carrefour` có 328 dòng (1.1%)
 - Sản phẩm thiếu thương hiệu được nhóm theo tên chuẩn hóa, không gộp chung.
 
-## 6. Thương hiệu sau chuẩn hóa (10829 thương hiệu)
+## 6. Thương hiệu sau chuẩn hóa (10828 thương hiệu)
 
 | Thương hiệu | Số dòng |
 |---|---|
-| nan | 4556 |
 | carrefour | 328 |
 | u | 308 |
 | auchan | 229 |
@@ -74,6 +73,7 @@
 | great-value | 94 |
 | hacendado | 93 |
 | albert-heijn | 93 |
+| monoprix | 88 |
 
 ## 7. Quốc gia (160 quốc gia, giữ toàn bộ theo phương án a)
 

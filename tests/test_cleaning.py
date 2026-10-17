@@ -356,3 +356,12 @@ def test_data_dictionary_documents_every_clean_column(root):
     doc = (root / "docs" / "data_dictionary.md").read_text(encoding="utf-8")
     missing = [c for c in cl.CLEAN_FEATURE_COLUMNS + cl.CLEAN_LABEL_COLUMNS if f"`{c}`" not in doc]
     assert not missing, f"data_dictionary.md thiếu cột: {missing}"
+
+
+def test_report_does_not_count_missing_brand_as_a_brand():
+    """Lỗi từng gặp: NaN là truthy nên 'nan' xuất hiện như một thương hiệu có 4556 dòng."""
+    *_, rep = run([mp(code="1", brand=None, product_name="a"), mp(code="2", brand=None, product_name="b"),
+                   mp(code="3", brand="xx:Nestle", product_name="c")])
+    assert rep["brands_unique"] == 1
+    assert rep["brands_top"] == [("nestle", 1)]
+    assert "nan" not in cl.render_report(rep, "t").lower().split("## 6.")[1].split("## 7.")[0]
