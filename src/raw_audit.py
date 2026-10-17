@@ -261,7 +261,10 @@ def audit_records(payloads, top_n=15):
         brands_usable[bt[0] if isinstance(bt, list) and bt else "(thiếu)"] += 1
 
     total_with_code = total - code_missing
-    top_brand_share = (brands_usable.most_common(1)[0][1] / usable) if usable else 0.0
+    # Thương hiệu "(thiếu)" KHÔNG phải một thương hiệu: loại ra khi đo mức tập trung, báo riêng tỷ lệ thiếu.
+    named_brands = Counter({b: n for b, n in brands_usable.items() if b != "(thiếu)"})
+    top_brand_share = (named_brands.most_common(1)[0][1] / usable) if usable and named_brands else 0.0
+    brand_missing_share = (brands_usable["(thiếu)"] / usable) if usable else 0.0
     top_country_share = (countries_usable.most_common(1)[0][1] / usable) if usable else 0.0
 
     all_keys = list(keys_seen)
@@ -288,9 +291,10 @@ def audit_records(payloads, top_n=15):
         "top_country_share": top_country_share,
         "lang_usable": top_items(lang_usable, top_n),
         "brands": {
-            "unique": len(brands_usable),
+            "unique": len(named_brands),
             "top": top_items(brands_usable, top_n),
             "top_share": top_brand_share,
+            "missing_share": brand_missing_share,
         },
         "ingredients": {
             "mean_n": (sum(ing_lengths) / len(ing_lengths)) if ing_lengths else 0.0,
@@ -349,6 +353,9 @@ def evaluate_checks(summary, min_usable=10000, min_class=100, min_nova_share=0.5
     top_brand = summary["brands"]["top_share"]
     add("Mức tập trung thương hiệu", "OK" if top_brand <= max_brand_share else "WARN",
         f"thương hiệu lớn nhất chiếm {100 * top_brand:.1f}% (ngưỡng {100 * max_brand_share:.0f}%), ảnh hưởng GroupKFold")
+    add("Thiếu thương hiệu", "INFO",
+        f"{100 * summary['brands'].get('missing_share', 0.0):.1f}% bản ghi dùng được không có thương hiệu "
+        "-> không gộp chung thành một nhóm khi chia GroupKFold")
 
     add("Mức tập trung quốc gia", "INFO",
         f"quốc gia lớn nhất chiếm {100 * summary['top_country_share']:.1f}% bản ghi dùng được")

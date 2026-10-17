@@ -19,7 +19,8 @@ chỉ dựa trên thành phần, phụ gia, danh mục và nhóm NOVA. Chi tiế
 │   ├── fetch_from_dump.py         # lấy mẫu từ bản dump Parquet chính thức (nguồn chính)
 │   ├── load_raw_to_postgres.py    # nạp JSON thô vào PostgreSQL
 │   ├── raw_audit.py               # kiểm toán dữ liệu thô (Bước 2)
-│   └── staging.py                 # làm phẳng dữ liệu thô (Bước 3)
+│   ├── staging.py                 # làm phẳng dữ liệu thô (Bước 3)
+│   └── cleaning.py                # làm sạch, loại trùng, tạo group_id (Bước 4)
 ├── tests/                     # kiểm thử tự động (pytest)
 ├── notebooks/00_raw_audit.ipynb
 ├── reports/                   # báo cáo kiểm toán (raw_audit.md / .json)
@@ -73,6 +74,13 @@ Mở `.env` và điền mật khẩu PostgreSQL cùng email liên hệ thật ch
    ```
    Kết quả: `data/processed/staging_features.parquet`, `data/processed/staging_audit.parquet`
    (không đẩy lên Git) và `reports/staging_report.md`. Xem `docs/data_dictionary.md`.
+
+6. Làm sạch (Bước 4):
+   ```bat
+   python -m src.cleaning
+   ```
+   Kết quả: `data/final/clean_features.parquet` (X), `data/final/clean_labels.parquet` (y),
+   `data/processed/clean_audit.parquet` (chỉ cho EDA) và `reports/cleaning_report.md` / `.json` (phễu làm sạch).
 
 ## Kiểm thử
 ```bat

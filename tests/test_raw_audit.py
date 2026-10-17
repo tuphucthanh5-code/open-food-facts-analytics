@@ -302,3 +302,22 @@ def test_main_with_empty_file_returns_error(tmp_path):
     with gzip.open(tmp_path / "empty.jsonl.gz", "wt", encoding="utf-8"):
         pass
     assert ra.main(["--pattern", str(tmp_path / "*.jsonl.gz"), "--out", str(tmp_path / "x")]) == 1
+
+
+# ---------------------------------------------------------------- sửa lỗi: "(thiếu)" không phải thương hiệu
+def test_missing_brand_does_not_count_as_top_brand():
+    payloads = [mp(code=f"{i:013d}", brand=None) for i in range(15)]
+    payloads += [mp(code=f"9{i:012d}", brand=f"b{i}") for i in range(85)]
+    s = ra.audit_records(payloads)
+    assert s["brands"]["top_share"] == pytest.approx(0.01)
+    assert s["brands"]["missing_share"] == pytest.approx(0.15)
+    assert s["brands"]["unique"] == 85
+    checks = {c["name"]: c for c in ra.evaluate_checks(s)}
+    assert checks["Mức tập trung thương hiệu"]["status"] == "OK"
+    assert "15.0%" in checks["Thiếu thương hiệu"]["detail"]
+
+
+def test_all_brands_missing_gives_zero_concentration():
+    s = ra.audit_records([mp(code=f"{i:013d}", brand=None) for i in range(5)])
+    assert s["brands"]["top_share"] == 0.0
+    assert s["brands"]["missing_share"] == 1.0

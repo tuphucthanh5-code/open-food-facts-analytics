@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-17T17:57:43+00:00",
+  "generated_at": "2026-10-17T18:29:55+00:00",
   "source": "PostgreSQL, bảng raw_products",
   "summary": {
     "total": 30000,
@@ -214,7 +214,7 @@
       ]
     ],
     "brands": {
-      "unique": 12939,
+      "unique": 12938,
       "top": [
         [
           "(thiếu)",
@@ -277,7 +277,8 @@
           76
         ]
       ],
-      "top_share": 0.14854323621574772
+      "top_share": 0.01023401560104007,
+      "missing_share": 0.14854323621574772
     },
     "ingredients": {
       "mean_n": 24.66391092739516,
@@ -432,8 +433,13 @@
     },
     {
       "name": "Mức tập trung thương hiệu",
-      "status": "WARN",
-      "detail": "thương hiệu lớn nhất chiếm 14.9% (ngưỡng 10%), ảnh hưởng GroupKFold"
+      "status": "OK",
+      "detail": "thương hiệu lớn nhất chiếm 1.0% (ngưỡng 10%), ảnh hưởng GroupKFold"
+    },
+    {
+      "name": "Thiếu thương hiệu",
+      "status": "INFO",
+      "detail": "14.9% bản ghi dùng được không có thương hiệu -> không gộp chung thành một nhóm khi chia GroupKFold"
     },
     {
       "name": "Mức tập trung quốc gia",

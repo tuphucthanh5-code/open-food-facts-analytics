@@ -1,0 +1,222 @@
+{
+  "generated_at": "2026-10-17T18:30:31+00:00",
+  "params": {
+    "max_ingredients": 150,
+    "few_ingredients": 1,
+    "non_country_tags": [
+      "en:world"
+    ]
+  },
+  "funnel": [
+    {
+      "step": "Đầu vào (sau staging)",
+      "dropped": 0,
+      "remaining": 30000
+    },
+    {
+      "step": "Nhãn không phải A-E",
+      "dropped": 2,
+      "remaining": 29998
+    },
+    {
+      "step": "Không có danh sách thành phần",
+      "dropped": 0,
+      "remaining": 29998
+    },
+    {
+      "step": "Mã vạch thiếu hoặc chứa ký tự không phải số",
+      "dropped": 0,
+      "remaining": 29998
+    },
+    {
+      "step": "Số thành phần > 150 (lỗi nhập liệu)",
+      "dropped": 19,
+      "remaining": 29979
+    },
+    {
+      "step": "Trùng mã vạch (giữ bản sửa gần nhất)",
+      "dropped": 0,
+      "remaining": 29979
+    },
+    {
+      "step": "Trùng nội dung: cùng thương hiệu + tên + thành phần",
+      "dropped": 75,
+      "remaining": 29904
+    }
+  ],
+  "normalization": {
+    "brand_unique_before": 12940,
+    "brand_unique_after": 10835,
+    "rows_with_en_world": 709,
+    "rows_without_country_after": 152,
+    "ingredients_n_negative_to_null": 0,
+    "ingredients_from_palm_oil_n_negative_to_null": 0,
+    "additives_n_negative_to_null": 0,
+    "ingredients_n_filled_from_tags": 0
+  },
+  "duplicates": {
+    "content_duplicate_groups_with_conflicting_grades": 2
+  },
+  "rows": 29904,
+  "grades": {
+    "a": 4517,
+    "b": 3296,
+    "c": 6482,
+    "d": 7112,
+    "e": 8497
+  },
+  "flags": {
+    "few_ingredients": 3981,
+    "missing_nova": 2909,
+    "missing_brand": 4556,
+    "any_off_taxonomy_ingredient": 9276
+  },
+  "countries_unique": 160,
+  "countries_top": [
+    [
+      "en:united-states",
+      11271
+    ],
+    [
+      "en:france",
+      8637
+    ],
+    [
+      "en:germany",
+      2967
+    ],
+    [
+      "en:united-kingdom",
+      1316
+    ],
+    [
+      "en:spain",
+      1247
+    ],
+    [
+      "en:italy",
+      1056
+    ],
+    [
+      "en:switzerland",
+      748
+    ],
+    [
+      "en:belgium",
+      704
+    ],
+    [
+      "en:netherlands",
+      640
+    ],
+    [
+      "en:canada",
+      422
+    ],
+    [
+      "en:poland",
+      349
+    ],
+    [
+      "en:australia",
+      259
+    ],
+    [
+      "en:austria",
+      238
+    ],
+    [
+      "en:ireland",
+      217
+    ],
+    [
+      "en:portugal",
+      212
+    ]
+  ],
+  "brands_unique": 10829,
+  "brands_top": [
+    [
+      NaN,
+      4556
+    ],
+    [
+      "carrefour",
+      328
+    ],
+    [
+      "u",
+      308
+    ],
+    [
+      "auchan",
+      229
+    ],
+    [
+      "aldi",
+      193
+    ],
+    [
+      "coop",
+      163
+    ],
+    [
+      "nestle",
+      158
+    ],
+    [
+      "casino",
+      132
+    ],
+    [
+      "marque-repere",
+      113
+    ],
+    [
+      "tesco",
+      109
+    ],
+    [
+      "lidl",
+      108
+    ],
+    [
+      "leader-price",
+      104
+    ],
+    [
+      "great-value",
+      94
+    ],
+    [
+      "hacendado",
+      93
+    ],
+    [
+      "albert-heijn",
+      93
+    ]
+  ],
+  "groups": {
+    "unique": 15141,
+    "largest": 328,
+    "largest_share": 0.011,
+    "largest_id": "brand:carrefour"
+  },
+  "ingredients_n": {
+    "median": 11.0,
+    "p99": 73.0,
+    "max": 146
+  },
+  "score_grade_consistency": {
+    "available": true,
+    "beverages_skipped": 3121,
+    "foods_without_score": 0,
+    "foods": {
+      "both": 25076,
+      "2023_only": 1144,
+      "neither": 417,
+      "2017_only": 146
+    }
+  }
+}

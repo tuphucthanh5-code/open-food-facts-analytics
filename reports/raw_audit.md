@@ -1,6 +1,6 @@
 # Báo cáo kiểm toán dữ liệu thô
 
-- Thời điểm: 2026-10-17T17:57:43+00:00
+- Thời điểm: 2026-10-17T18:29:55+00:00
 - Nguồn: PostgreSQL, bảng raw_products
 - Tổng bản ghi: **30000**
 - Có nhãn A-E hợp lệ: **29998** (100.0%)
@@ -16,7 +16,8 @@
 | Mỗi hạng A-E đủ mẫu | OK | hạng ít nhất có 3309 mẫu, ngưỡng 100 |
 | Độ phủ NOVA | OK | 90.3% bản ghi dùng được có nova_group hợp lệ (ngưỡng 50%) |
 | Thẻ thành phần đã chuẩn hóa taxonomy (tiền tố en:) | OK | 94.8% thẻ có tiền tố en: (ngưỡng 90%) |
-| Mức tập trung thương hiệu | WARN | thương hiệu lớn nhất chiếm 14.9% (ngưỡng 10%), ảnh hưởng GroupKFold |
+| Mức tập trung thương hiệu | OK | thương hiệu lớn nhất chiếm 1.0% (ngưỡng 10%), ảnh hưởng GroupKFold |
+| Thiếu thương hiệu | INFO | 14.9% bản ghi dùng được không có thương hiệu -> không gộp chung thành một nhóm khi chia GroupKFold |
 | Mức tập trung quốc gia | INFO | quốc gia lớn nhất chiếm 37.8% bản ghi dùng được |
 | Không thu thập trường cá nhân | OK | không có |
 | Trường rò rỉ nhãn có trong dữ liệu thô | INFO | nutriments, nutriscore_grade, nutriscore_score -> phải loại ở bước staging, không đưa vào đặc trưng |
@@ -94,7 +95,7 @@
 | ro | 106 |
 | da | 85 |
 
-## 7. Thương hiệu (bản ghi dùng được; 12939 thương hiệu khác nhau)
+## 7. Thương hiệu (bản ghi dùng được; 12938 thương hiệu khác nhau)
 
 | Thương hiệu | Số bản ghi |
 |---|---|
