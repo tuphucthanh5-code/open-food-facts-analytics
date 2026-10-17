@@ -1,0 +1,464 @@
+{
+  "generated_at": "2026-10-17T17:57:43+00:00",
+  "source": "PostgreSQL, bảng raw_products",
+  "summary": {
+    "total": 30000,
+    "code": {
+      "missing": 0,
+      "unique": 30000,
+      "duplicate_records": 0,
+      "leading_zero": 10963,
+      "non_digit": 0,
+      "non_string": 0
+    },
+    "grade_raw": [
+      [
+        "e",
+        8519
+      ],
+      [
+        "d",
+        7128
+      ],
+      [
+        "c",
+        6502
+      ],
+      [
+        "a",
+        4540
+      ],
+      [
+        "b",
+        3309
+      ],
+      [
+        "(thiếu)",
+        2
+      ]
+    ],
+    "labeled": 29998,
+    "labeled_grades": {
+      "a": 4540,
+      "b": 3309,
+      "c": 6502,
+      "d": 7128,
+      "e": 8519
+    },
+    "usable": 29998,
+    "usable_grades": {
+      "a": 4540,
+      "b": 3309,
+      "c": 6502,
+      "d": 7128,
+      "e": 8519
+    },
+    "usable_with_nova": 27078,
+    "grade_by_nova": {
+      "a": {
+        "1": 1905,
+        "2": 13,
+        "3": 934,
+        "4": 1152
+      },
+      "b": {
+        "1": 639,
+        "2": 114,
+        "3": 682,
+        "4": 1274
+      },
+      "c": {
+        "1": 517,
+        "2": 83,
+        "3": 1367,
+        "4": 4010
+      },
+      "d": {
+        "1": 271,
+        "2": 39,
+        "3": 1723,
+        "4": 4607
+      },
+      "e": {
+        "1": 106,
+        "2": 209,
+        "3": 1199,
+        "4": 6234
+      }
+    },
+    "countries_all_unique": 162,
+    "countries_usable_unique": 162,
+    "countries_usable": [
+      [
+        "en:united-states",
+        11326
+      ],
+      [
+        "en:france",
+        8660
+      ],
+      [
+        "en:germany",
+        2972
+      ],
+      [
+        "en:united-kingdom",
+        1318
+      ],
+      [
+        "en:spain",
+        1254
+      ],
+      [
+        "en:italy",
+        1059
+      ],
+      [
+        "en:switzerland",
+        749
+      ],
+      [
+        "en:world",
+        709
+      ],
+      [
+        "en:belgium",
+        706
+      ],
+      [
+        "en:netherlands",
+        640
+      ],
+      [
+        "en:canada",
+        423
+      ],
+      [
+        "en:poland",
+        349
+      ],
+      [
+        "en:australia",
+        259
+      ],
+      [
+        "en:austria",
+        239
+      ],
+      [
+        "en:ireland",
+        217
+      ]
+    ],
+    "top_country_share": 0.37755850390026,
+    "lang_usable": [
+      [
+        "en",
+        14638
+      ],
+      [
+        "fr",
+        8214
+      ],
+      [
+        "de",
+        2552
+      ],
+      [
+        "es",
+        1287
+      ],
+      [
+        "it",
+        844
+      ],
+      [
+        "nl",
+        591
+      ],
+      [
+        "pl",
+        272
+      ],
+      [
+        "pt",
+        248
+      ],
+      [
+        "sv",
+        160
+      ],
+      [
+        "nb",
+        143
+      ],
+      [
+        "bg",
+        133
+      ],
+      [
+        "cs",
+        128
+      ],
+      [
+        "fi",
+        115
+      ],
+      [
+        "ro",
+        106
+      ],
+      [
+        "da",
+        85
+      ]
+    ],
+    "brands": {
+      "unique": 12939,
+      "top": [
+        [
+          "(thiếu)",
+          4456
+        ],
+        [
+          "xx:U",
+          307
+        ],
+        [
+          "xx:Carrefour",
+          247
+        ],
+        [
+          "xx:auchan",
+          229
+        ],
+        [
+          "xx:aldi",
+          188
+        ],
+        [
+          "xx:coop",
+          160
+        ],
+        [
+          "xx:nestle",
+          151
+        ],
+        [
+          "xx:Casino",
+          131
+        ],
+        [
+          "xx:marque-repere",
+          115
+        ],
+        [
+          "xx:leader-price",
+          103
+        ],
+        [
+          "xx:hacendado",
+          94
+        ],
+        [
+          "xx:Monoprix",
+          86
+        ],
+        [
+          "xx:carrefour",
+          84
+        ],
+        [
+          "xx:albert-heijn",
+          80
+        ],
+        [
+          "xx:Picard",
+          76
+        ]
+      ],
+      "top_share": 0.14854323621574772
+    },
+    "ingredients": {
+      "mean_n": 24.66391092739516,
+      "median_n": 20.0,
+      "share_le1": 0.06080405360357357,
+      "en_prefix_share": 0.9475838933431369
+    },
+    "fields": {
+      "code": {
+        "absent_all": 0,
+        "missing_all": 0,
+        "missing_labeled": 0
+      },
+      "product_name": {
+        "absent_all": 212,
+        "missing_all": 212,
+        "missing_labeled": 212
+      },
+      "brands_tags": {
+        "absent_all": 3943,
+        "missing_all": 4456,
+        "missing_labeled": 4456
+      },
+      "countries_tags": {
+        "absent_all": 13,
+        "missing_all": 92,
+        "missing_labeled": 92
+      },
+      "categories_tags": {
+        "absent_all": 0,
+        "missing_all": 0,
+        "missing_labeled": 0
+      },
+      "pnns_groups_1": {
+        "absent_all": 5979,
+        "missing_all": 5979,
+        "missing_labeled": 5977
+      },
+      "pnns_groups_2": {
+        "absent_all": 6130,
+        "missing_all": 6130,
+        "missing_labeled": 6128
+      },
+      "ingredients_text": {
+        "absent_all": 0,
+        "missing_all": 0,
+        "missing_labeled": 0
+      },
+      "ingredients_tags": {
+        "absent_all": 0,
+        "missing_all": 0,
+        "missing_labeled": 0
+      },
+      "ingredients_n": {
+        "absent_all": 0,
+        "missing_all": 0,
+        "missing_labeled": 0
+      },
+      "ingredients_analysis_tags": {
+        "absent_all": 0,
+        "missing_all": 0,
+        "missing_labeled": 0
+      },
+      "additives_tags": {
+        "absent_all": 0,
+        "missing_all": 13243,
+        "missing_labeled": 13241
+      },
+      "additives_n": {
+        "absent_all": 0,
+        "missing_all": 0,
+        "missing_labeled": 0
+      },
+      "allergens_tags": {
+        "absent_all": 0,
+        "missing_all": 11575,
+        "missing_labeled": 11573
+      },
+      "labels_tags": {
+        "absent_all": 11879,
+        "missing_all": 16571,
+        "missing_labeled": 16569
+      },
+      "nova_group": {
+        "absent_all": 2921,
+        "missing_all": 2921,
+        "missing_labeled": 2920
+      },
+      "nutriscore_grade": {
+        "absent_all": 2,
+        "missing_all": 2,
+        "missing_labeled": 0
+      },
+      "nutriments": {
+        "absent_all": 0,
+        "missing_all": 140,
+        "missing_labeled": 140
+      },
+      "last_modified_t": {
+        "absent_all": 0,
+        "missing_all": 0,
+        "missing_labeled": 0
+      },
+      "lang": {
+        "absent_all": 0,
+        "missing_all": 0,
+        "missing_labeled": 0
+      }
+    },
+    "keys_seen_count": 23,
+    "leakage_fields_present": [
+      "nutriments",
+      "nutriscore_grade",
+      "nutriscore_score"
+    ],
+    "pii_fields_present": [],
+    "nutriscore_related_fields": [
+      "nutriscore_grade",
+      "nutriscore_score"
+    ]
+  },
+  "checks": [
+    {
+      "name": "Có dữ liệu",
+      "status": "OK",
+      "detail": "30000 bản ghi"
+    },
+    {
+      "name": "Trùng mã vạch",
+      "status": "OK",
+      "detail": "0 bản ghi trùng mã (xử lý ở bước cleaning)"
+    },
+    {
+      "name": "Số bản ghi dùng được (nhãn hợp lệ + có thành phần)",
+      "status": "OK",
+      "detail": "29998 bản ghi, mục tiêu tối thiểu 10000"
+    },
+    {
+      "name": "Mỗi hạng A-E đủ mẫu",
+      "status": "OK",
+      "detail": "hạng ít nhất có 3309 mẫu, ngưỡng 100"
+    },
+    {
+      "name": "Độ phủ NOVA",
+      "status": "OK",
+      "detail": "90.3% bản ghi dùng được có nova_group hợp lệ (ngưỡng 50%)"
+    },
+    {
+      "name": "Thẻ thành phần đã chuẩn hóa taxonomy (tiền tố en:)",
+      "status": "OK",
+      "detail": "94.8% thẻ có tiền tố en: (ngưỡng 90%)"
+    },
+    {
+      "name": "Mức tập trung thương hiệu",
+      "status": "WARN",
+      "detail": "thương hiệu lớn nhất chiếm 14.9% (ngưỡng 10%), ảnh hưởng GroupKFold"
+    },
+    {
+      "name": "Mức tập trung quốc gia",
+      "status": "INFO",
+      "detail": "quốc gia lớn nhất chiếm 37.8% bản ghi dùng được"
+    },
+    {
+      "name": "Không thu thập trường cá nhân",
+      "status": "OK",
+      "detail": "không có"
+    },
+    {
+      "name": "Trường rò rỉ nhãn có trong dữ liệu thô",
+      "status": "INFO",
+      "detail": "nutriments, nutriscore_grade, nutriscore_score -> phải loại ở bước staging, không đưa vào đặc trưng"
+    },
+    {
+      "name": "Trường liên quan Nutri-Score (kiểm tra phiên bản công thức)",
+      "status": "INFO",
+      "detail": "nutriscore_grade, nutriscore_score"
+    },
+    {
+      "name": "Mã vạch lưu dạng chuỗi",
+      "status": "OK",
+      "detail": "0 mã không phải chuỗi; 10963 mã bắt đầu bằng 0"
+    }
+  ]
+}
