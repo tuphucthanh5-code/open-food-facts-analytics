@@ -61,13 +61,19 @@ CLEAN_FEATURE_COLUMNS = [
 CLEAN_LABEL_COLUMNS = ["row_id", "code", "nutriscore_grade"]
 
 # --- Ngưỡng điểm -> hạng, CHỈ dùng để chẩn đoán phiên bản công thức ---------------------
-# Thực phẩm thông thường (không phải đồ uống, không phải nhóm chất béo/phô mai đặc thù).
-# Hãy đối chiếu lại với tài liệu chính thức của Santé publique France trước khi trích dẫn.
+# Nguồn: mã tính nhãn của Open Food Facts (openfoodfacts-server, lib/ProductOpener/Nutriscore.pm,
+# hàm compute_nutriscore_grade_2021 và compute_nutriscore_grade_2023), đối chiếu ngày 23/10/2026.
+# Phô mai và thịt đỏ KHÔNG có ngưỡng riêng (chỉ khác cách tính điểm). Đồ uống có bảng riêng
+# (bản 2023 coi cả sữa uống là đồ uống) nên bị bỏ qua ở bước chẩn đoán này.
 GRADE_THRESHOLDS = {
-    "2017": [(-1, "a"), (2, "b"), (10, "c"), (18, "d")],   # A <= -1, B 0..2, C 3..10, D 11..18, E >= 19
-    "2023": [(0, "a"), (2, "b"), (10, "c"), (18, "d")],    # A <= 0,  B 1..2, C 3..10, D 11..18, E >= 19
+    "2017": [(-1, "a"), (2, "b"), (10, "c"), (18, "d")],      # A <= -1, B 0..2, C 3..10, D 11..18, E >= 19
+    "2023": [(0, "a"), (2, "b"), (10, "c"), (18, "d")],       # A <= 0,  B 1..2, C 3..10, D 11..18, E >= 19
+    "2023_fat": [(-6, "a"), (2, "b"), (10, "c"), (18, "d")],  # chất béo/dầu/hạt: A <= -6, B -5..2
 }
 BEVERAGE_TAG = "en:beverages"
+# OFF xác định nhóm chất béo/dầu/hạt qua thuộc tính của cây danh mục; ở đây xấp xỉ bằng các thẻ cha.
+FAT_OIL_NUT_SEED_TAGS = {"en:fats", "en:vegetable-oils", "en:nuts", "en:nuts-and-their-products",
+                         "en:seeds", "en:oilseeds"}
 
 
 # ======================================================================================
@@ -164,22 +170,34 @@ def make_group_id(brand, name, code):
     return f"code:{code}"
 
 
-def grade_from_score(score, version):
-    """Hạng suy ra từ điểm theo bảng ngưỡng thực phẩm thông thường; None nếu không có điểm."""
+def grade_from_score(score, version, is_fat=False):
+    """Hạng suy ra từ điểm (thực phẩm, không phải đồ uống); None nếu không có điểm.
+
+    Nhóm chất béo/dầu/hạt chỉ có ngưỡng riêng ở bản 2023; bản 2017 dùng chung bảng thực phẩm.
+    """
     if score is None or score != score:
         return None
-    for upper, grade in GRADE_THRESHOLDS[version]:
+    key = "2023_fat" if is_fat and version == "2023" else version
+    for upper, grade in GRADE_THRESHOLDS[key]:
         if score <= upper:
             return grade
     return "e"
 
 
-def score_grade_consistency(score, grade):
+def is_fat_oil_nut_seed(categories):
+    """True nếu danh mục thuộc nhóm chất béo/dầu/hạt (xấp xỉ, xem FAT_OIL_NUT_SEED_TAGS)."""
+    try:
+        return any(t in FAT_OIL_NUT_SEED_TAGS for t in categories)
+    except TypeError:  # None / NaN: không có danh mục
+        return False
+
+
+def score_grade_consistency(score, grade, is_fat=False):
     """'both' | '2017_only' | '2023_only' | 'neither' | None (thiếu điểm/hạng)."""
     if grade not in VALID_GRADES or score is None or score != score:
         return None
     ok17 = grade_from_score(score, "2017") == grade
-    ok23 = grade_from_score(score, "2023") == grade
+    ok23 = grade_from_score(score, "2023", is_fat) == grade
     if ok17 and ok23:
         return "both"
     if ok17:
@@ -333,12 +351,15 @@ def consistency_table(final):
     if "nutriscore_score" not in final.columns:
         return {"available": False}
     bev = final["categories_tags"].map(lambda t: bool(t) and BEVERAGE_TAG in t)
-    res = [score_grade_consistency(s, g) for s, g in zip(final["nutriscore_score"], final["nutriscore_grade"])]
+    fat = final["categories_tags"].map(is_fat_oil_nut_seed)
+    res = [score_grade_consistency(s, g, f)
+           for s, g, f in zip(final["nutriscore_score"], final["nutriscore_grade"], fat)]
     res = pd.Series(res, index=final.index)
     foods = res[~bev]
     return {
         "available": True,
         "beverages_skipped": int(bev.sum()),
+        "fats_oils_nuts_seeds": int((fat & ~bev).sum()),
         "foods_without_score": int(foods.isna().sum()),
         "foods": {k: int(v) for k, v in foods.value_counts().items()},
     }
@@ -445,8 +466,10 @@ def render_report(r, generated_at):
         lines += [
             f"- Bỏ qua {c['beverages_skipped']} đồ uống (bảng ngưỡng khác); "
             f"{c['foods_without_score']} thực phẩm không có điểm.",
-            "- Bảng ngưỡng dùng cho thực phẩm thông thường; nhóm chất béo, phô mai có ngưỡng riêng "
-            "nên một phần dòng 'không khớp' là bình thường.", "",
+            f"- {c.get('fats_oils_nuts_seeds', 0)} thực phẩm thuộc nhóm chất béo/dầu/hạt dùng ngưỡng riêng "
+            "của bản 2023 (A ≤ -6). Phô mai và thịt đỏ không có ngưỡng riêng.",
+            "- Nguồn ngưỡng: mã tính nhãn của Open Food Facts (`Nutriscore.pm`). Phần lớn dòng 'không khớp' "
+            "còn lại là sữa uống (bản 2023 tính là đồ uống) mà danh mục không gắn `en:beverages`.", "",
             _table(["Kết quả", "Số dòng", "%"],
                    [[CONSISTENCY_LABELS[k], foods.get(k, 0), _pct(foods.get(k, 0), total)]
                     for k in CONSISTENCY_LABELS]),

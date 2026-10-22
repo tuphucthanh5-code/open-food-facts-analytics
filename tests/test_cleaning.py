@@ -91,6 +91,31 @@ def test_score_grade_consistency(score, grade, exp):
     assert cl.score_grade_consistency(score, grade) == exp
 
 
+@pytest.mark.parametrize("score, v17, v23", [
+    (-7, "a", "a"), (-6, "a", "a"), (-5, "a", "b"), (-1, "a", "b"), (0, "b", "b"),
+    (2, "b", "b"), (3, "c", "c"), (18, "d", "d"), (19, "e", "e"),
+])
+def test_grade_from_score_fats_oils_nuts_seeds(score, v17, v23):
+    # Ngưỡng riêng chỉ có ở bản 2023 (A <= -6); bản 2017 dùng chung bảng thực phẩm
+    assert cl.grade_from_score(score, "2017", is_fat=True) == v17
+    assert cl.grade_from_score(score, "2023", is_fat=True) == v23
+
+
+@pytest.mark.parametrize("score, grade, exp", [
+    (-3, "b", "2023_only"), (-3, "a", "2017_only"), (-6, "a", "both"), (0, "a", "neither"), (0, "b", "both"),
+])
+def test_score_grade_consistency_fats(score, grade, exp):
+    assert cl.score_grade_consistency(score, grade, is_fat=True) == exp
+
+
+@pytest.mark.parametrize("cats, exp", [
+    (["en:plant-based-foods", "en:fats", "en:olive-oils"], True), (["en:nuts"], True),
+    (np.array(["en:seeds"]), True), (["en:cheeses"], False), ([], False), (None, False), (float("nan"), False),
+])
+def test_is_fat_oil_nut_seed(cats, exp):
+    assert cl.is_fat_oil_nut_seed(cats) is exp
+
+
 @pytest.mark.parametrize("bad", ["nutriscore_grade", "nutriscore_score", "sugars_100g", "fat_serving",
                                  "nutriments", "creator", "nutrition_label", "nutrient_levels_tags"])
 def test_assert_no_leakage_rejects(bad):
@@ -323,6 +348,16 @@ def test_consistency_report_skips_beverages():
     c = rep["score_grade_consistency"]
     assert c["available"] and c["beverages_skipped"] == 1
     assert c["foods"] == {"both": 1, "2017_only": 1}
+
+
+def test_consistency_report_uses_fat_thresholds():
+    # Dầu điểm -3 hạng B: sai với bảng thực phẩm thường, nhưng đúng ngưỡng chất béo bản 2023
+    payloads = [mp(code="1", nutriscore_score=-3, grade="b", categories_tags=["en:fats", "en:vegetable-oils"]),
+                mp(code="2", nutriscore_score=-3, grade="b", product_name="b")]
+    *_, rep = run(payloads)
+    c = rep["score_grade_consistency"]
+    assert c["fats_oils_nuts_seeds"] == 1
+    assert c["foods"] == {"2023_only": 1, "neither": 1}
 
 
 def test_report_renders(tmp_path):

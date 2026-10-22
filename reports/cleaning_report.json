@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-17T19:13:07+00:00",
+  "generated_at": "2026-10-22T18:17:44+00:00",
   "params": {
     "max_ingredients": 150,
     "few_ingredients": 1,
@@ -211,12 +211,13 @@
   "score_grade_consistency": {
     "available": true,
     "beverages_skipped": 3121,
+    "fats_oils_nuts_seeds": 1596,
     "foods_without_score": 0,
     "foods": {
-      "both": 25076,
-      "2023_only": 1144,
-      "neither": 417,
-      "2017_only": 146
+      "both": 25183,
+      "2023_only": 1394,
+      "neither": 167,
+      "2017_only": 39
     }
   }
 }

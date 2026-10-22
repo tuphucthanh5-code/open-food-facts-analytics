@@ -1,6 +1,6 @@
 # Báo cáo làm sạch dữ liệu (Bước 4)
 
-- Thời điểm: 2026-10-17T19:13:07+00:00
+- Thời điểm: 2026-10-22T18:17:44+00:00
 - Đầu vào: **30000** dòng; giữ lại: **29904** dòng (99.7%)
 - Tham số: số thành phần tối đa 150; gắn cờ khi ≤ 1 thành phần; bỏ thẻ quốc gia en:world
 
@@ -102,11 +102,12 @@
 ## 9. Kiểm tra điểm - hạng Nutri-Score (chẩn đoán phiên bản công thức, KHÔNG dùng để lọc)
 
 - Bỏ qua 3121 đồ uống (bảng ngưỡng khác); 0 thực phẩm không có điểm.
-- Bảng ngưỡng dùng cho thực phẩm thông thường; nhóm chất béo, phô mai có ngưỡng riêng nên một phần dòng 'không khớp' là bình thường.
+- 1596 thực phẩm thuộc nhóm chất béo/dầu/hạt dùng ngưỡng riêng của bản 2023 (A ≤ -6). Phô mai và thịt đỏ không có ngưỡng riêng.
+- Nguồn ngưỡng: mã tính nhãn của Open Food Facts (`Nutriscore.pm`). Phần lớn dòng 'không khớp' còn lại là sữa uống (bản 2023 tính là đồ uống) mà danh mục không gắn `en:beverages`.
 
 | Kết quả | Số dòng | % |
 |---|---|---|
-| Khớp cả hai bảng ngưỡng | 25076 | 93.6 |
-| Chỉ khớp ngưỡng cũ (2017) | 146 | 0.5 |
-| Chỉ khớp ngưỡng mới (2023) | 1144 | 4.3 |
-| Không khớp bảng nào | 417 | 1.6 |
+| Khớp cả hai bảng ngưỡng | 25183 | 94.0 |
+| Chỉ khớp ngưỡng cũ (2017) | 39 | 0.1 |
+| Chỉ khớp ngưỡng mới (2023) | 1394 | 5.2 |
+| Không khớp bảng nào | 167 | 0.6 |

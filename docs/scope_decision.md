@@ -45,6 +45,15 @@ Search API trả lỗi HTTP 503 liên tục khi thu thập (17/10/2026), mỗi b
 - Phiên bản công thức Nutri-Score: bản dump không có trường phiên bản, nên không tách được nhãn theo công thức
   2017/2021 và 2023. Bước 4 chỉ chẩn đoán (so điểm với hạng theo hai bảng ngưỡng, mục 9 của
   `reports/cleaning_report.md`), không lọc. Ghi là hạn chế của dự án.
+- Bảng ngưỡng điểm -> hạng (đối chiếu 23/10/2026): lấy theo mã tính nhãn của chính Open Food Facts
+  (`openfoodfacts-server/lib/ProductOpener/Nutriscore.pm`, hàm `compute_nutriscore_grade_2021` và
+  `compute_nutriscore_grade_2023`), vì nhãn trong dump do mã này tính ra. Ngưỡng đồ uống khớp thêm với báo cáo
+  chính thức của Ủy ban khoa học Nutri-Score (2/2023). Kết quả: ngưỡng thực phẩm thường trong mã đã đúng;
+  bổ sung ngưỡng riêng của nhóm chất béo/dầu/hạt bản 2023 (A ≤ -6), nhận diện xấp xỉ qua `categories_tags`;
+  phô mai và thịt đỏ không có ngưỡng riêng; đồ uống vẫn bỏ qua. Không dòng nào bị thêm hay loại.
+  Sau khi sửa: chỉ 0,1% thực phẩm *chỉ* khớp bản 2017, 5,2% *chỉ* khớp bản 2023, 0,6% không khớp (chủ yếu là
+  sữa uống mà bản 2023 tính là đồ uống). Điều này phù hợp với việc OFF tính lại toàn bộ theo công thức mới từ
+  cuối 2024, nên nhãn gần như theo bản 2023.
 - Làm sạch (Bước 4): loại nhãn ngoài A-E, dòng không có thành phần, mã vạch hỏng, `ingredients_n` > 150,
   trùng mã vạch và trùng nội dung; sản phẩm ≤ 1 thành phần chỉ gắn cờ, không loại. Không lọc dựa trên dinh dưỡng.
 - Nhóm GroupKFold: theo thương hiệu đã chuẩn hóa; sản phẩm thiếu thương hiệu nhóm theo tên chuẩn hóa.
@@ -52,5 +61,6 @@ Search API trả lỗi HTTP 503 liên tục khi thu thập (17/10/2026), mỗi b
 ## Rủi ro đã biết
 - Bản dump không có `pnns_groups_*`; dùng `food_groups_tags` thay thế (cấp 1 và cấp 2).
 - Quốc gia lệch mạnh; cần báo cáo hiệu năng theo quốc gia.
-- Nhãn trộn hai phiên bản công thức Nutri-Score; mô hình học một "nhãn trung bình" của hai công thức.
+- Nhãn có thể trộn hai phiên bản công thức Nutri-Score; mức trộn nhỏ (chỉ 0,1% thực phẩm chỉ khớp bản 2017),
+  nhưng 94% khớp cả hai bảng nên không xác định được chắc chắn phiên bản của từng dòng.
 - Sản phẩm Mỹ không mang nhãn Nutri-Score thật trên bao bì; hạng là do Open Food Facts tự tính.
