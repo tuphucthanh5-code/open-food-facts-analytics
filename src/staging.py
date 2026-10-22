@@ -238,7 +238,7 @@ def main(argv=None):
 
     if args.source == "file":
         if not glob.glob(args.pattern):
-            print(f"Không tìm thấy tệp nào khớp '{args.pattern}'. Hãy chạy fetch_raw_food_facts.py trước.")
+            print(f"Không tìm thấy tệp nào khớp '{args.pattern}'. Hãy chạy src.fetch_from_dump trước.")
             return 1
         payloads, source = iter_payloads(args.pattern), f"tệp {args.pattern}"
     else:

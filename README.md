@@ -15,7 +15,6 @@ chỉ dựa trên thành phần, phụ gia, danh mục và nhóm NOVA. Chi tiế
 │   ├── init_raw_db.sql        # tạo bảng raw_products (JSONB)
 │   └── audit_queries.sql      # truy vấn kiểm toán dữ liệu thô
 ├── src/
-│   ├── fetch_raw_food_facts.py    # thu thập dữ liệu qua Search API v2 (lượng nhỏ, minh họa)
 │   ├── fetch_from_dump.py         # lấy mẫu từ bản dump Parquet chính thức (nguồn chính)
 │   ├── load_raw_to_postgres.py    # nạp JSON thô vào PostgreSQL
 │   ├── raw_audit.py               # kiểm toán dữ liệu thô (Bước 2)
@@ -55,8 +54,7 @@ Mở `.env` và điền mật khẩu PostgreSQL cùng email liên hệ thật ch
    python -m src.fetch_from_dump --n 30000 --seed 42
    ```
    Mẫu ngẫu nhiên tự nhiên, tái lập được nhờ `--seed`; chỉ lấy sản phẩm có nhãn A-E và có `ingredients_tags`,
-   không đọc cột cá nhân. Search API (`python src\fetch_raw_food_facts.py`) chỉ dùng cho lượng nhỏ vì giới hạn
-   10 request/phút và hay trả lỗi 503.
+   không đọc cột cá nhân. Search API đã bỏ vì giới hạn 10 request/phút, hay trả lỗi 503 và mẫu không ngẫu nhiên.
 3. Nạp vào PostgreSQL:
    ```bat
    python src\load_raw_to_postgres.py
