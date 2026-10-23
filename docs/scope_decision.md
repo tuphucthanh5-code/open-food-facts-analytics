@@ -57,13 +57,13 @@ Search API trả lỗi HTTP 503 liên tục khi thu thập (17/10/2026), mỗi b
 - Làm sạch (Bước 4): loại nhãn ngoài A-E, dòng không có thành phần, mã vạch hỏng, `ingredients_n` > 150,
   trùng mã vạch và trùng nội dung; sản phẩm ≤ 1 thành phần chỉ gắn cờ, không loại. Không lọc dựa trên dinh dưỡng.
 - Nhóm GroupKFold: theo thương hiệu đã chuẩn hóa; sản phẩm thiếu thương hiệu nhóm theo tên chuẩn hóa.
-- Rò rỉ nhãn qua `labels_tags` (phát hiện khi rà soát mã 24/10/2026): cột này chứa logo Nutri-Score in trên bao bì
+- Rò rỉ nhãn qua `labels_tags` (phát hiện khi rà soát mã 23/10/2026): cột này chứa logo Nutri-Score in trên bao bì
   (`en:nutriscore-grade-a`...; 1.848 dòng, 61% trùng đúng hạng thật) và các hệ thống điểm/cảnh báo tính từ bảng
   dinh dưỡng (Health Star Rating, Keyhole, nhãn "exceso"/"alto en" của Mỹ Latinh). Bước 4 bỏ các thẻ này khỏi
   `labels_tags` (2.263 dòng bị ảnh hưởng), KHÔNG loại dòng nào; `assert_no_leaky_values` kiểm tra giá trị, vì hai
   chốt cũ chỉ kiểm tra tên cột. Ranh giới: lời quảng cáo về một chất (`en:low-fat`, `en:no-added-sugar`) được giữ,
   vì có sẵn trên bao bì kể cả khi thiếu bảng dinh dưỡng; đây là lựa chọn có chủ đích, ghi là hạn chế.
-- Mở rộng chốt chặn rò rỉ sang `categories_tags` (25/10/2026): rà mọi cột chữ của X bằng cùng mẫu nhận diện thì thấy
+- Mở rộng chốt chặn rò rỉ sang `categories_tags` (23/10/2026): rà mọi cột chữ của X bằng cùng mẫu nhận diện thì thấy
   1 dòng có thẻ danh mục do người dùng tự gõ `fr:nutri score a` (đúng hạng thật A). Bước 4 bỏ thẻ này giống
   `labels_tags` và `assert_no_leaky_values` kiểm tra cả hai cột. KHÔNG lọc `product_name`, `ingredients_tags`,
   `ingredients_text`: chỉ 14 dòng chứa chữ chú thích logo "NUTRI-SCORE ABCDE" hoặc rác OCR, không nêu hạng cụ thể,
