@@ -127,6 +127,47 @@ def test_assert_no_leakage_accepts_clean_columns():
     cl.assert_no_leakage(cl.CLEAN_FEATURE_COLUMNS)
 
 
+@pytest.mark.parametrize("tag", [
+    "en:nutriscore", "en:nutriscore-grade-a", "en:nutriscore-experiment-grade-d", "en:nutri-score-a-b",
+    "en:nutriscore-grade-b-new-calculation", "en:health-star-rating-4-5", "en:keyhole",
+    "es:exceso-azucares", "es:exceso en calorías", "es:alto-en-sodio", "es:1-sello", "en:high-in-sugars",
+    "EN:NUTRISCORE-GRADE-E",
+])
+def test_leaky_labels_detected(tag):
+    assert cl.is_leaky_label(tag)
+
+
+@pytest.mark.parametrize("tag", [
+    "en:organic", "en:no-added-sugar", "en:low-fat", "en:high-in-omega-3", "en:high-in-fibre",
+    "en:vegan", "en:fair-trade", "es:sello-de-calidad", None,
+])
+def test_marketing_claims_are_kept(tag):
+    # Lời quảng cáo về một chất có sẵn trên bao bì, không phải điểm tóm tắt dinh dưỡng
+    assert not cl.is_leaky_label(tag)
+
+
+def test_drop_leaky_labels_keeps_others_and_none():
+    assert cl.drop_leaky_labels(["en:organic", "en:nutriscore-grade-a", "en:vegan"]) == ["en:organic", "en:vegan"]
+    assert cl.drop_leaky_labels(np.array(["en:nutriscore"])) == []
+    assert cl.drop_leaky_labels(None) is None
+
+
+def test_assert_no_leaky_values():
+    cl.assert_no_leaky_values(pd.DataFrame({"labels_tags": [["en:organic"], None, []]}))
+    with pytest.raises(ValueError, match="rò rỉ"):
+        cl.assert_no_leaky_values(pd.DataFrame({"labels_tags": [["en:organic"], ["en:nutriscore-grade-c"]]}))
+
+
+def test_clean_removes_leaky_labels_but_keeps_row():
+    X, *_, rep = run([mp(code="1", labels_tags=["en:organic", "en:nutriscore-grade-c", "en:health-star-rating-4"]),
+                      mp(code="2", product_name="b", labels_tags=["en:low-fat"])])
+    assert len(X) == 2
+    by_code = dict(zip(X["code"], X["labels_tags"]))
+    assert list(by_code["1"]) == ["en:organic"]
+    assert list(by_code["2"]) == ["en:low-fat"]
+    assert rep["normalization"]["rows_with_leaky_labels_removed"] == 1
+
+
 # ======================================================================================
 # Ghép đầu vào
 # ======================================================================================

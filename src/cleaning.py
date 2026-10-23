@@ -16,6 +16,7 @@ Các bước (theo đúng thứ tự, mỗi bước ghi lại số dòng bị lo
     3. Lọc: nhãn không hợp lệ, không có thành phần, mã vạch không hợp lệ, số thành phần phi lý.
     4. Loại trùng mã vạch (giữ bản sửa gần nhất).
     5. Loại trùng nội dung (cùng thương hiệu + tên + danh sách thành phần), tránh rò rỉ giữa train và test.
+       labels_tags bỏ các thẻ rò rỉ nhãn (logo Nutri-Score, Health Star Rating, nhãn cảnh báo dinh dưỡng).
     6. Gắn cờ chất lượng (không loại): ít thành phần, thẻ ngoài taxonomy, thiếu NOVA.
     7. Tạo group_id cho GroupKFold.
 
@@ -74,6 +75,17 @@ BEVERAGE_TAG = "en:beverages"
 # OFF xác định nhóm chất béo/dầu/hạt qua thuộc tính của cây danh mục; ở đây xấp xỉ bằng các thẻ cha.
 FAT_OIL_NUT_SEED_TAGS = {"en:fats", "en:vegetable-oils", "en:nuts", "en:nuts-and-their-products",
                          "en:seeds", "en:oilseeds"}
+
+# --- Thẻ nhãn bao bì làm rò rỉ nhãn ----------------------------------------------------------
+# labels_tags có cả logo Nutri-Score in trên bao bì (en:nutriscore-grade-a...) và các hệ thống điểm/cảnh báo
+# tính từ bảng dinh dưỡng (Health Star Rating, Keyhole, đèn giao thông, nhãn "exceso"/"alto en" của Mỹ Latinh).
+# Đó là chính đáp án hoặc tóm tắt của bảng dinh dưỡng -> phải bỏ. Lời quảng cáo về MỘT chất (en:low-fat,
+# en:no-added-sugar) vẫn giữ vì có sẵn trên bao bì kể cả khi thiếu bảng dinh dưỡng.
+LEAKY_LABEL_PATTERN = re.compile(
+    r"nutri[- ]?score|nutrition[- ]?grade|health[- ]?star|keyhole|nutrinform|traffic[- ]?light"
+    r"|exceso|alto[- ]en[- ]|sellos?[- ]de[- ]advertencia|(^|:)\d+[- ]sellos?$"
+    r"|high[- ]in[- ](sugars?|salt|sodium|saturated|fat|calories|energy)"
+)
 
 
 # ======================================================================================
@@ -207,12 +219,33 @@ def score_grade_consistency(score, grade, is_fat=False):
     return "neither"
 
 
+def is_leaky_label(tag):
+    return isinstance(tag, str) and bool(LEAKY_LABEL_PATTERN.search(tag.lower()))
+
+
+def drop_leaky_labels(tags):
+    """Bỏ thẻ rò rỉ khỏi labels_tags; vắng (None) giữ là None."""
+    items = as_list(tags)
+    if items is None:
+        return None
+    return [t for t in items if not is_leaky_label(t)]
+
+
 def assert_no_leakage(columns):
     """Bảng đặc trưng sạch không được chứa nhãn, dinh dưỡng, điểm hay trường cá nhân."""
     bad = set(find_leakage_fields(columns)) | set(find_pii_fields(columns))
     bad |= {c for c in columns if c.endswith("_100g") or c.endswith("_serving") or "nutri" in c.lower()}
     if bad:
         raise ValueError(f"Bảng đặc trưng sạch chứa cột bị cấm: {sorted(bad)}")
+
+
+def assert_no_leaky_values(X):
+    """Kiểm tra GIÁ TRỊ (không chỉ tên cột): labels_tags không còn thẻ rò rỉ nhãn."""
+    if "labels_tags" not in X.columns:
+        return
+    found = sorted({t for tags in X["labels_tags"] for t in (as_list(tags) or []) if is_leaky_label(t)})
+    if found:
+        raise ValueError(f"labels_tags còn thẻ rò rỉ nhãn: {found[:10]}")
 
 
 # ======================================================================================
@@ -249,6 +282,10 @@ def normalize(df):
         if col in ("brands_tags", "countries_tags"):
             continue
         df[col] = df[col].map(clean_tags)
+
+    leaky = df["labels_tags"].map(lambda v: any(is_leaky_label(t) for t in (as_list(v) or [])))
+    stats["rows_with_leaky_labels_removed"] = int(leaky.sum())
+    df["labels_tags"] = df["labels_tags"].map(drop_leaky_labels)
 
     df["product_name"] = df["product_name"].map(
         lambda s: re.sub(r"\s+", " ", s).strip() or None if isinstance(s, str) else None)
@@ -331,6 +368,7 @@ def clean(features, audit, max_ingredients=DEFAULT_MAX_INGREDIENTS):
 
     X = final[CLEAN_FEATURE_COLUMNS].copy()
     assert_no_leakage(list(X.columns))
+    assert_no_leaky_values(X)
     y = final[CLEAN_LABEL_COLUMNS].copy()
     kept = set(final["row_id"])
     clean_audit = audit[audit["row_id"].isin(kept)].sort_values("row_id").reset_index(drop=True)
@@ -411,6 +449,7 @@ NORM_LABELS = {
     "brand_unique_after": "Số thương hiệu khác nhau sau chuẩn hóa",
     "rows_with_en_world": "Dòng có thẻ en:world (đã bỏ thẻ)",
     "rows_without_country_after": "Dòng không còn quốc gia nào",
+    "rows_with_leaky_labels_removed": "Dòng có thẻ nhãn rò rỉ (Nutri-Score, Health Star...) đã bỏ khỏi labels_tags",
     "ingredients_n_negative_to_null": "ingredients_n âm -> thiếu",
     "ingredients_from_palm_oil_n_negative_to_null": "ingredients_from_palm_oil_n âm -> thiếu",
     "additives_n_negative_to_null": "additives_n âm -> thiếu",
