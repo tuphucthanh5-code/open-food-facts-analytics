@@ -321,3 +321,45 @@ def test_all_brands_missing_gives_zero_concentration():
     s = ra.audit_records([mp(code=f"{i:013d}", brand=None) for i in range(5)])
     assert s["brands"]["top_share"] == 0.0
     assert s["brands"]["missing_share"] == 1.0
+
+
+# --------------------------------------------------------------------------- đọc từ PostgreSQL
+class _FakeCursor:
+    """Con trỏ giả: ghi lại câu truy vấn và trả về vài payload (dòng không phải dict phải bị bỏ qua)."""
+    def __init__(self, log):
+        self.log, self.itersize = log, None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def execute(self, sql):
+        self.log.append(sql)
+
+    def __iter__(self):
+        return iter([({"code": "1"},), ({"code": "2"},), (None,)])
+
+
+class _FakeConn:
+    def __init__(self, log):
+        self.log = log
+
+    def cursor(self, name=None):
+        return _FakeCursor(self.log)
+
+    def close(self):
+        self.log.append("closed")
+
+
+def test_iter_db_reads_in_stable_order(monkeypatch):
+    """row_id của staging lấy từ thứ tự đọc, nên truy vấn phải có ORDER BY (nếu không row_id có thể đổi)."""
+    import psycopg2
+    log = []
+    monkeypatch.setattr(psycopg2, "connect", lambda **kw: _FakeConn(log))
+    got = list(ra.iter_db())
+    assert got == [{"code": "1"}, {"code": "2"}]
+    assert log[0].upper().rstrip().endswith("ORDER BY ID")
+    assert "raw_products" in log[0]
+    assert log[-1] == "closed"

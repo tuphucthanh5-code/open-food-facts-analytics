@@ -1,6 +1,6 @@
 # Báo cáo làm sạch dữ liệu (Bước 4)
 
-- Thời điểm: 2026-10-23T14:46:04+00:00
+- Thời điểm: 2026-10-23T15:22:38+00:00
 - Đầu vào: **30000** dòng; giữ lại: **29904** dòng (99.7%)
 - Tham số: số thành phần tối đa 150; gắn cờ khi ≤ 1 thành phần; bỏ thẻ quốc gia en:world
 

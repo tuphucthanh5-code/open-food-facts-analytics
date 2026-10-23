@@ -145,8 +145,14 @@ def iter_payloads(pattern, stats=None):
         yield from iter_jsonl(path, stats)
 
 
+DB_PAYLOAD_QUERY = "SELECT payload FROM {table} ORDER BY id"
+
+
 def iter_db(table="raw_products"):
-    """Đọc cột payload từ PostgreSQL bằng con trỏ phía máy chủ (không nạp hết vào RAM)."""
+    """Đọc cột payload từ PostgreSQL bằng con trỏ phía máy chủ (không nạp hết vào RAM).
+
+    ORDER BY id để thứ tự đọc cố định giữa các lần chạy: staging dùng thứ tự này làm row_id,
+    nếu không có thì PostgreSQL được phép trả dòng theo thứ tự vật lý bất kỳ và row_id sẽ đổi."""
     import psycopg2
     from dotenv import load_dotenv
 
@@ -161,7 +167,7 @@ def iter_db(table="raw_products"):
     try:
         with conn.cursor(name="raw_audit_cursor") as cur:
             cur.itersize = 2000
-            cur.execute(f"SELECT payload FROM {table}")
+            cur.execute(DB_PAYLOAD_QUERY.format(table=table))
             for (payload,) in cur:
                 if isinstance(payload, dict):
                     yield payload

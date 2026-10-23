@@ -1,6 +1,6 @@
 # Báo cáo staging
 
-- Thời điểm: 2026-10-17T17:57:48+00:00
+- Thời điểm: 2026-10-23T15:22:35+00:00
 - Nguồn: PostgreSQL, bảng raw_products
 - Số dòng (không lọc): **30000**
 - Có nhãn A-E hợp lệ: 29998
