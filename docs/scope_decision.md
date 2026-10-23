@@ -63,6 +63,11 @@ Search API trả lỗi HTTP 503 liên tục khi thu thập (17/10/2026), mỗi b
   `labels_tags` (2.263 dòng bị ảnh hưởng), KHÔNG loại dòng nào; `assert_no_leaky_values` kiểm tra giá trị, vì hai
   chốt cũ chỉ kiểm tra tên cột. Ranh giới: lời quảng cáo về một chất (`en:low-fat`, `en:no-added-sugar`) được giữ,
   vì có sẵn trên bao bì kể cả khi thiếu bảng dinh dưỡng; đây là lựa chọn có chủ đích, ghi là hạn chế.
+- Mở rộng chốt chặn rò rỉ sang `categories_tags` (25/10/2026): rà mọi cột chữ của X bằng cùng mẫu nhận diện thì thấy
+  1 dòng có thẻ danh mục do người dùng tự gõ `fr:nutri score a` (đúng hạng thật A). Bước 4 bỏ thẻ này giống
+  `labels_tags` và `assert_no_leaky_values` kiểm tra cả hai cột. KHÔNG lọc `product_name`, `ingredients_tags`,
+  `ingredients_text`: chỉ 14 dòng chứa chữ chú thích logo "NUTRI-SCORE ABCDE" hoặc rác OCR, không nêu hạng cụ thể,
+  và mẫu dễ nhận nhầm trong câu văn (vd. "el consumo en exceso", cảnh báo thuốc nhuận tràng). Ghi là hạn chế.
 
 ## Rủi ro đã biết
 - Bản dump không có `pnns_groups_*`; dùng `food_groups_tags` thay thế (cấp 1 và cấp 2).

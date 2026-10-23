@@ -16,7 +16,7 @@ Các bước (theo đúng thứ tự, mỗi bước ghi lại số dòng bị lo
     3. Lọc: nhãn không hợp lệ, không có thành phần, mã vạch không hợp lệ, số thành phần phi lý.
     4. Loại trùng mã vạch (giữ bản sửa gần nhất).
     5. Loại trùng nội dung (cùng thương hiệu + tên + danh sách thành phần), tránh rò rỉ giữa train và test.
-       labels_tags bỏ các thẻ rò rỉ nhãn (logo Nutri-Score, Health Star Rating, nhãn cảnh báo dinh dưỡng).
+       labels_tags và categories_tags bỏ các thẻ rò rỉ nhãn (logo Nutri-Score, Health Star Rating, nhãn cảnh báo).
     6. Gắn cờ chất lượng (không loại): ít thành phần, thẻ ngoài taxonomy, thiếu NOVA.
     7. Tạo group_id cho GroupKFold.
 
@@ -86,6 +86,11 @@ LEAKY_LABEL_PATTERN = re.compile(
     r"|exceso|alto[- ]en[- ]|sellos?[- ]de[- ]advertencia|(^|:)\d+[- ]sellos?$"
     r"|high[- ]in[- ](sugars?|salt|sodium|saturated|fat|calories|energy)"
 )
+# Các cột thẻ được lọc và kiểm tra. categories_tags cũng có thể lọt thẻ do người dùng tự gõ (vd. "fr:nutri score a").
+# Không lọc product_name / ingredients_*: chỉ vài dòng chữ chú thích logo "NUTRI-SCORE ABCDE" hoặc rác OCR,
+# không nêu hạng, và mẫu dễ nhận nhầm trong câu văn (ghi là hạn chế trong docs/scope_decision.md).
+LEAKY_TAG_COLUMNS = {"labels_tags": "rows_with_leaky_labels_removed",
+                     "categories_tags": "rows_with_leaky_categories_removed"}
 
 
 # ======================================================================================
@@ -224,7 +229,7 @@ def is_leaky_label(tag):
 
 
 def drop_leaky_labels(tags):
-    """Bỏ thẻ rò rỉ khỏi labels_tags; vắng (None) giữ là None."""
+    """Bỏ thẻ rò rỉ khỏi một danh sách thẻ (labels_tags, categories_tags); vắng (None) giữ là None."""
     items = as_list(tags)
     if items is None:
         return None
@@ -240,12 +245,13 @@ def assert_no_leakage(columns):
 
 
 def assert_no_leaky_values(X):
-    """Kiểm tra GIÁ TRỊ (không chỉ tên cột): labels_tags không còn thẻ rò rỉ nhãn."""
-    if "labels_tags" not in X.columns:
-        return
-    found = sorted({t for tags in X["labels_tags"] for t in (as_list(tags) or []) if is_leaky_label(t)})
-    if found:
-        raise ValueError(f"labels_tags còn thẻ rò rỉ nhãn: {found[:10]}")
+    """Kiểm tra GIÁ TRỊ (không chỉ tên cột): các cột trong LEAKY_TAG_COLUMNS không còn thẻ rò rỉ nhãn."""
+    for col in LEAKY_TAG_COLUMNS:
+        if col not in X.columns:
+            continue
+        found = sorted({t for tags in X[col] for t in (as_list(tags) or []) if is_leaky_label(t)})
+        if found:
+            raise ValueError(f"{col} còn thẻ rò rỉ nhãn: {found[:10]}")
 
 
 # ======================================================================================
@@ -283,9 +289,10 @@ def normalize(df):
             continue
         df[col] = df[col].map(clean_tags)
 
-    leaky = df["labels_tags"].map(lambda v: any(is_leaky_label(t) for t in (as_list(v) or [])))
-    stats["rows_with_leaky_labels_removed"] = int(leaky.sum())
-    df["labels_tags"] = df["labels_tags"].map(drop_leaky_labels)
+    for col, key in LEAKY_TAG_COLUMNS.items():
+        leaky = df[col].map(lambda v: any(is_leaky_label(t) for t in (as_list(v) or [])))
+        stats[key] = int(leaky.sum())
+        df[col] = df[col].map(drop_leaky_labels)
 
     df["product_name"] = df["product_name"].map(
         lambda s: re.sub(r"\s+", " ", s).strip() or None if isinstance(s, str) else None)
@@ -450,6 +457,7 @@ NORM_LABELS = {
     "rows_with_en_world": "Dòng có thẻ en:world (đã bỏ thẻ)",
     "rows_without_country_after": "Dòng không còn quốc gia nào",
     "rows_with_leaky_labels_removed": "Dòng có thẻ nhãn rò rỉ (Nutri-Score, Health Star...) đã bỏ khỏi labels_tags",
+    "rows_with_leaky_categories_removed": "Dòng có thẻ rò rỉ (vd. fr:nutri score a) đã bỏ khỏi categories_tags",
     "ingredients_n_negative_to_null": "ingredients_n âm -> thiếu",
     "ingredients_from_palm_oil_n_negative_to_null": "ingredients_from_palm_oil_n âm -> thiếu",
     "additives_n_negative_to_null": "additives_n âm -> thiếu",

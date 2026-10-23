@@ -75,6 +75,7 @@ Các cột giữ nguyên tên từ staging nhưng đã chuẩn hóa: `row_id`, `
 | `countries_tags` | list[string] | bỏ `en:world` (không phải quốc gia); giữ đủ 162 quốc gia |
 | các cột `*_tags` khác | list[string] | strip, chữ thường, bỏ rỗng, bỏ trùng, giữ thứ tự |
 | `labels_tags` | list[string] | như trên, và bỏ thẻ rò rỉ nhãn (logo Nutri-Score, Health Star Rating, Keyhole, nhãn cảnh báo "exceso"/"alto en"); giữ lời quảng cáo về một chất như `en:low-fat` |
+| `categories_tags` | list[string] | như trên, và bỏ thẻ rò rỉ cùng mẫu với `labels_tags` (vd. thẻ tự gõ `fr:nutri score a`) |
 | `ingredients_n`, `additives_n`, `ingredients_from_palm_oil_n` | Int64 | số âm thành thiếu; `ingredients_n` thiếu thì lấy số thẻ thành phần |
 | `lang` | string | chữ thường |
 | `group_id` | string | nhóm cho GroupKFold: `brand:<thương hiệu>`; nếu thiếu thương hiệu thì `name:<tên chuẩn hóa>`; nếu thiếu cả hai thì `code:<mã vạch>` |

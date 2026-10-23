@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-23T15:22:38+00:00",
+  "generated_at": "2026-10-23T16:05:19+00:00",
   "params": {
     "max_ingredients": 150,
     "few_ingredients": 1,
@@ -50,6 +50,7 @@
     "rows_with_en_world": 709,
     "rows_without_country_after": 152,
     "rows_with_leaky_labels_removed": 2263,
+    "rows_with_leaky_categories_removed": 1,
     "ingredients_n_negative_to_null": 0,
     "ingredients_from_palm_oil_n_negative_to_null": 0,
     "additives_n_negative_to_null": 0,

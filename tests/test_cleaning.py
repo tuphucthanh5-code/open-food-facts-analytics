@@ -158,6 +158,24 @@ def test_assert_no_leaky_values():
         cl.assert_no_leaky_values(pd.DataFrame({"labels_tags": [["en:organic"], ["en:nutriscore-grade-c"]]}))
 
 
+def test_assert_no_leaky_values_checks_categories_too():
+    ok = pd.DataFrame({"labels_tags": [["en:organic"]], "categories_tags": [["en:snacks"]]})
+    cl.assert_no_leaky_values(ok)
+    bad = pd.DataFrame({"labels_tags": [["en:organic"]], "categories_tags": [["en:snacks", "fr:nutri score a"]]})
+    with pytest.raises(ValueError, match="categories_tags"):
+        cl.assert_no_leaky_values(bad)
+
+
+def test_clean_removes_leaky_categories_but_keeps_row_and_name():
+    # Thẻ do người dùng tự gõ "fr:nutri score a" phải bị bỏ; thẻ danh mục khác và tên sản phẩm giữ nguyên
+    X, *_, rep = run([mp(code="1", categories_tags=["en:beverages", "fr:nutri score a"],
+                         product_name="Paprika NUTRI-SCORE ABCDE")])
+    assert len(X) == 1
+    assert list(X.loc[0, "categories_tags"]) == ["en:beverages"]
+    assert X.loc[0, "product_name"] == "Paprika NUTRI-SCORE ABCDE"   # cố ý không lọc tên (xem scope_decision)
+    assert rep["normalization"]["rows_with_leaky_categories_removed"] == 1
+
+
 def test_clean_removes_leaky_labels_but_keeps_row():
     X, *_, rep = run([mp(code="1", labels_tags=["en:organic", "en:nutriscore-grade-c", "en:health-star-rating-4"]),
                       mp(code="2", product_name="b", labels_tags=["en:low-fat"])])

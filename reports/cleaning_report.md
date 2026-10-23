@@ -1,6 +1,6 @@
 # Báo cáo làm sạch dữ liệu (Bước 4)
 
-- Thời điểm: 2026-10-23T15:22:38+00:00
+- Thời điểm: 2026-10-23T16:05:19+00:00
 - Đầu vào: **30000** dòng; giữ lại: **29904** dòng (99.7%)
 - Tham số: số thành phần tối đa 150; gắn cờ khi ≤ 1 thành phần; bỏ thẻ quốc gia en:world
 
@@ -27,6 +27,7 @@
 | Dòng có thẻ en:world (đã bỏ thẻ) | 709 |
 | Dòng không còn quốc gia nào | 152 |
 | Dòng có thẻ nhãn rò rỉ (Nutri-Score, Health Star...) đã bỏ khỏi labels_tags | 2263 |
+| Dòng có thẻ rò rỉ (vd. fr:nutri score a) đã bỏ khỏi categories_tags | 1 |
 | ingredients_n âm -> thiếu | 0 |
 | ingredients_from_palm_oil_n âm -> thiếu | 0 |
 | additives_n âm -> thiếu | 0 |
