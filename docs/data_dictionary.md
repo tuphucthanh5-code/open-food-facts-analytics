@@ -104,3 +104,57 @@ Các cột của `staging_audit`, chỉ cho những dòng được giữ lại. 
 6. Trùng nội dung (cùng thương hiệu + tên chuẩn hóa + danh sách thành phần): giữ bản mới nhất.
 
 Không bước nào dựa vào bảng dinh dưỡng hay điểm Nutri-Score.
+
+---
+
+# Từ điển đặc trưng (Bước 6)
+
+Tạo bởi `src/features.py`. Không lưu ma trận ra tệp: `build_feature_pipeline` trả về một sklearn Pipeline nhận
+`clean_features.parquet` và trả về ma trận thưa; ở Bước 7-8 pipeline chỉ được fit trên tập huấn luyện của từng fold.
+`python -m src.features` chỉ ghi báo cáo mô tả `reports/features_report.md` và danh sách tên `reports/feature_names.txt`.
+
+Tên đặc trưng có dạng `<nhóm>-<phần>__<tên>`, ví dụ `ingredients__en:sugar`, `categories-pnns__pnns_groups_1_filled_beverages`.
+Nhóm (để bật/tắt khi làm ablation): `numeric`, `position`, `ingredients`, `additives`, `categories`, `nova`, `labels`,
+`countries`, `flags`.
+
+## Cột trung gian do `RowFeatures` tạo (tính từ riêng từng dòng, không học từ dữ liệu)
+
+| Cột | Nhóm | Quy tắc |
+|---|---|---|
+| `n_allergens` | numeric | số thẻ trong `allergens_tags` |
+| `ingredients_text_len` | numeric | số ký tự của `ingredients_text` |
+| `n_ingredients_with_percent` | numeric | số tỷ lệ phần trăm ghi trong chữ thành phần (`70 %`, `12,5%`) |
+| `has_palm_oil` | numeric | 1 nếu `ingredients_from_palm_oil_n` > 0 hoặc có thẻ dầu/mỡ cọ (`en:palm-oil`, `en:palm-kernel-fat`...) |
+| `pos_sugar`, `pos_salt`, `pos_fat` | position | vị trí tương đối của thẻ đầu tiên là đường / muối / chất béo trong `ingredients_tags`: 1 nếu đứng đầu, giảm dần về 0 ở cuối, 0 nếu không có. Nhận diện theo từ trong thẻ `en:` (sugar, syrup, glucose...; salt; oil, fat, butter...), bỏ thẻ phủ định như `en:fat-reduced-cocoa`, `en:no-added-sugar` |
+| `first_ingredient` | position | danh sách chỉ gồm thẻ thành phần đầu tiên (thành phần nhiều nhất theo khối lượng) |
+| `add_colours`, `add_preservatives`, `add_antioxidants_acids`, `add_thickeners_emulsifiers`, `add_acidity_anticaking`, `add_flavour_enhancers`, `add_sweeteners`, `add_other` | additives | số phụ gia theo nhóm số E: 1xx tạo màu, 2xx bảo quản, 3xx chống oxy hóa/axit, 4xx làm dày/nhũ hóa, 5xx điều chỉnh axit/chống đông vón, 6xx điều vị; chất tạo ngọt (E420, E421, E950-E969) tách riêng. `en:e322` và `en:e322i` chỉ tính một lần |
+| `is_beverage`, `is_fat_oil_nut_seed`, `is_cheese` | categories | có `en:beverages` / thuộc nhóm chất béo, dầu, hạt (như Bước 4) / có `en:cheeses` trong `categories_tags` |
+| `pnns_groups_2_filled` | categories | `pnns_groups_2` chữ thường; thiếu thành `missing` |
+| `nova_1`, `nova_2`, `nova_3`, `nova_4`, `nova_missing` | nova | one-hot của `nova_group`; ngoài 1-4 hoặc thiếu thành `nova_missing` = 1. Thay cho `flag_missing_nova` |
+| `is_organic` | labels | có nhãn hữu cơ (`en:organic`, `en:eu-organic`, mã `xx-bio-nn`, `fr:ab-agriculture-biologique`) |
+
+## Cột do `CategoryGroupImputer` tạo (học từ tập huấn luyện)
+
+| Cột | Nhóm | Quy tắc |
+|---|---|---|
+| `pnns_groups_1_filled` | categories | `pnns_groups_1` gốc (gộp `alcoholic beverages` vào `beverages`); nếu thiếu thì lấy nhóm phổ biến nhất của thẻ danh mục thuần nhất mà sản phẩm có (thẻ có ở ≥ 5 sản phẩm đã biết nhóm, nhóm chiếm > 50%); không đủ căn cứ thì `missing` |
+| `pnns_groups_1_imputed` | flags | 1 nếu `pnns_groups_1_filled` là nhóm bổ sung, 0 nếu là nhóm gốc hoặc `missing` |
+
+## Đặc trưng đưa vào mô hình
+
+| Nhóm | Đặc trưng | Biến đổi (fit trên tập huấn luyện) |
+|---|---|---|
+| `numeric` | `ingredients_n`, `additives_n`, `ingredients_from_palm_oil_n`, `n_allergens`, `ingredients_text_len`, `n_ingredients_with_percent`; `has_palm_oil` | điền trung vị -> log(1 + x) -> chuẩn hóa; cờ để nguyên |
+| `position` | `pos_sugar`, `pos_salt`, `pos_fat`; multi-hot `first_ingredient` | để nguyên; thẻ đầu tiên phải có ở ≥ `min_freq` sản phẩm |
+| `ingredients` | multi-hot `ingredients_tags` + `n_rare` | giữ thẻ có ở ≥ `min_freq` sản phẩm; `n_rare` = log(1 + số thẻ không được giữ, kể cả thẻ chưa gặp) |
+| `additives` | multi-hot `additives_tags` + `n_rare`; 8 cột `add_*` | như trên; số đếm theo nhóm: điền trung vị -> log(1 + x) -> chuẩn hóa |
+| `categories` | one-hot `pnns_groups_1_filled`, `pnns_groups_2_filled`; multi-hot `categories_tags` + `n_rare`; `is_beverage`, `is_fat_oil_nut_seed`, `is_cheese` | nhóm chưa gặp lúc fit thành toàn 0 |
+| `nova` | `nova_1` ... `nova_4`, `nova_missing` | để nguyên |
+| `labels` | multi-hot `labels_tags` + `n_rare`; multi-hot `ingredients_analysis_tags` (thuần chay, chay, dầu cọ); `is_organic` | ngưỡng `min_freq` |
+| `countries` | multi-hot `countries_tags` + `n_rare`; `n_countries` | ngưỡng `min_freq`; số quốc gia: log(1 + x) -> chuẩn hóa |
+| `flags` | `flag_few_ingredients`, `flag_missing_brand`, `share_ingredients_off_taxonomy`, `pnns_groups_1_imputed` | để nguyên |
+
+`min_freq` mặc định là 100 cho mọi cột danh sách thẻ (thử thêm 20; chốt ở Bước 8).
+Không dùng làm đặc trưng: `row_id`, `code`, `group_id` (chỉ để chia dữ liệu), `brand`, `brands_tags` (thương hiệu là
+nhóm GroupKFold nên thương hiệu ở tập kiểm tra không có trong tập huấn luyện), `product_name`, `lang`, `last_modified`,
+`flag_missing_nova` (trùng `nova_missing`).

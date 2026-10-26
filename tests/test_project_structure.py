@@ -8,6 +8,7 @@ REQUIRED_FILES = [
     ".gitignore", ".env.example", "README.md", "requirements.txt", "requirements-dev.txt", "pytest.ini",
     "sql/init_raw_db.sql", "sql/audit_queries.sql",
     "src/__init__.py", "src/load_raw_to_postgres.py", "src/raw_audit.py", "src/staging.py", "src/fetch_from_dump.py", "src/cleaning.py",
+    "src/features.py",
     "docs/problem_statement.md", "docs/scope_decision.md", "docs/data_dictionary.md",
 ]
 
@@ -94,5 +95,6 @@ def test_readme_mentions_license_and_tests(root):
 
 def test_requirements_cover_imports_used_in_src(root):
     reqs = (root / "requirements.txt").read_text(encoding="utf-8").lower()
-    for lib in ("requests", "urllib3", "psycopg2", "python-dotenv", "pandas", "pyarrow", "duckdb"):
+    for lib in ("requests", "urllib3", "psycopg2", "python-dotenv", "pandas", "pyarrow", "duckdb", "scipy",
+                "scikit-learn"):
         assert lib in reqs, f"requirements.txt thiếu {lib}"
