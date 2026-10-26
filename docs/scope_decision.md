@@ -69,6 +69,23 @@ Search API trả lỗi HTTP 503 liên tục khi thu thập (17/10/2026), mỗi b
   `ingredients_text`: chỉ 14 dòng chứa chữ chú thích logo "NUTRI-SCORE ABCDE" hoặc rác OCR, không nêu hạng cụ thể,
   và mẫu dễ nhận nhầm trong câu văn (vd. "el consumo en exceso", cảnh báo thuốc nhuận tràng). Ghi là hạn chế.
 
+## Quyết định đầu Bước 6 (feature engineering, 26/10/2026)
+- Thành phần: mỗi thẻ thành một cột 0/1; thẻ hiếm gộp vào cột `n_rare_ingredients`. Đã đếm trên `clean_features.parquet`
+  (29.904 dòng, 53.793 thẻ): ngưỡng ≥ 20 sản phẩm giữ 1.491 cột, ngưỡng ≥ 100 giữ 627 cột. Ngưỡng là tham số; chọn
+  bằng điểm F1 trung bình theo lớp (GroupKFold) ở Bước 8, nếu gần nhau thì chọn 100 cho gọn và dễ giải thích.
+  Danh sách thẻ giữ lại học trong từng fold huấn luyện; nếu đếm trên toàn bộ thì ghi là hạn chế (không dùng nhãn).
+- `pnns_groups_1` thiếu 20,0% (5.966 dòng): bổ sung từ `categories_tags` bằng ánh xạ thẻ danh mục -> nhóm, học chỉ từ
+  các dòng đã có nhóm (trong tập huấn luyện của từng fold), KHÔNG dùng nhãn Nutri-Score. Giữ cờ `pnns_groups_1_imputed`.
+  Đo độ chính xác của phép bổ sung bằng cách giấu nhóm của các dòng đã có rồi suy lại. Thẻ mới sinh ra vẫn phải qua
+  `assert_no_leaky_values`. Nhóm `alcoholic beverages` chỉ có 4 dòng nên gộp vào `beverages` (chốt 26/10/2026).
+- NOVA: đưa vào như biến phân loại one-hot `nova_1`..`nova_4` và `nova_missing` (2.909 dòng thiếu; NOVA 2 chỉ có 454
+  dòng). `nova_missing` trùng `flag_missing_nova`, chỉ giữ một. Không điền giá trị trung bình.
+- Các cờ thiếu dữ liệu (`flag_few_ingredients`, `flag_missing_nova`, `flag_missing_brand`,
+  `any_off_taxonomy_ingredient`, `pnns_groups_1_imputed`): vẫn tạo đủ ở Bước 6, gom thành nhóm đặc trưng `flags` riêng;
+  Bước 8 so mô hình có và không có nhóm này rồi mới chốt.
+- Đường cơ sở Bước 7: đoán hạng phổ biến nhất (28,4%) và đoán theo `pnns_groups_2`, tính lại bằng GroupKFold
+  (học trên train, đo trên test) thay cho con số 50,5% ước lượng trên chính dữ liệu. Chỉ số chính: F1 trung bình theo lớp.
+
 ## Rủi ro đã biết
 - Bản dump không có `pnns_groups_*`; dùng `food_groups_tags` thay thế (cấp 1 và cấp 2).
 - Quốc gia lệch mạnh; cần báo cáo hiệu năng theo quốc gia.
