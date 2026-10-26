@@ -80,6 +80,14 @@ Mở `.env` và điền mật khẩu PostgreSQL cùng email liên hệ thật ch
    Kết quả: `data/final/clean_features.parquet` (X), `data/final/clean_labels.parquet` (y),
    `data/processed/clean_audit.parquet` (chỉ cho EDA) và `reports/cleaning_report.md` / `.json` (phễu làm sạch).
 
+7. Đặc trưng (Bước 6):
+   ```bat
+   python -m src.features
+   ```
+   Chỉ đọc `data/final/clean_features.parquet`, không đọc nhãn. Kết quả: `reports/features_report.md` / `.json`
+   (số đặc trưng theo nhóm, ngưỡng 20 và 100, độ chính xác phép bổ sung `pnns_groups_1`) và `reports/feature_names.txt`.
+   Bước 7-8 dùng `build_feature_pipeline` / `fit_feature_pipeline` trong `src/features.py` và chỉ fit trên tập huấn luyện.
+
 ## Kiểm thử
 ```bat
 pytest                      # toàn bộ test (test tích hợp tự bỏ qua nếu không có PostgreSQL)

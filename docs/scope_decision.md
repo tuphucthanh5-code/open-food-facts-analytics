@@ -86,6 +86,25 @@ Search API trả lỗi HTTP 503 liên tục khi thu thập (17/10/2026), mỗi b
 - Đường cơ sở Bước 7: đoán hạng phổ biến nhất (28,4%) và đoán theo `pnns_groups_2`, tính lại bằng GroupKFold
   (học trên train, đo trên test) thay cho con số 50,5% ước lượng trên chính dữ liệu. Chỉ số chính: F1 trung bình theo lớp.
 
+## Cách làm Bước 6 và điểm lệch so với kế hoạch (26/10/2026)
+- Mọi biến đổi nằm trong một sklearn Pipeline (`build_feature_pipeline`); không lưu ma trận đặc trưng fit trên toàn bộ
+  dữ liệu, vì ngưỡng thẻ, ánh xạ danh mục và phép chuẩn hóa phải học lại trên tập huấn luyện của từng fold.
+  `reports/features_report.md` chỉ mô tả (fit trên toàn bộ để đếm cột, không dùng nhãn).
+- Cùng một `min_freq` cho mọi cột danh sách thẻ (thành phần, phụ gia, danh mục, nhãn, quốc gia, thành phần đầu tiên)
+  để dễ giải thích. Ngưỡng 100: 1.163 đặc trưng; ngưỡng 20: 2.858.
+- Kết quả bổ sung `pnns_groups_1`: bổ sung được 3.038/5.966 sản phẩm thiếu (50,9%), còn 2.928 để `missing` vì thẻ
+  danh mục chung chung (`en:snacks`, `en:desserts`) không đủ thuần hoặc chưa dịch (`en:yogures`). Thử trên 20% sản phẩm
+  đã biết nhóm (chia theo `group_id`): đúng 95,7%; con số này lạc quan hơn thực tế vì lý do trên. `pnns_groups_2`
+  chưa bổ sung (thiếu ở cùng các dòng), để giá trị `missing`.
+- Lệch kế hoạch "thành phần đứng thứ 1-3": `ingredients_tags` chèn thẻ cha ngay sau mỗi thành phần
+  (`en:sugar`, `en:added-sugar`, `en:disaccharide`), nên thẻ thứ 2-3 thường chỉ là thẻ cha của thành phần đầu. Chỉ dùng
+  thành phần **đầu tiên** (luôn đúng) và vị trí **tương đối** của đường, muối, chất béo (1 = đứng đầu, 0 = không có).
+  Nhận diện đường/muối/chất béo theo từ trong thẻ `en:`, là xấp xỉ, ghi là hạn chế.
+- Không dùng `brand`/`brands_tags` làm đặc trưng: thương hiệu là nhóm GroupKFold, nên thương hiệu ở tập kiểm tra không
+  bao giờ có trong tập huấn luyện. Không làm TF-IDF trên `ingredients_text` (tùy chọn trong kế hoạch), để sau nếu cần.
+- `flag_missing_nova` không đưa vào vì trùng `nova_missing`. Khi Bước 8 bỏ nhóm `flags`, mô hình vẫn biết NOVA bị thiếu
+  qua nhóm `nova`; muốn bỏ hẳn tín hiệu "thiếu" thì phải bỏ cả cột `nova_missing`.
+
 ## Rủi ro đã biết
 - Bản dump không có `pnns_groups_*`; dùng `food_groups_tags` thay thế (cấp 1 và cấp 2).
 - Quốc gia lệch mạnh; cần báo cáo hiệu năng theo quốc gia.
