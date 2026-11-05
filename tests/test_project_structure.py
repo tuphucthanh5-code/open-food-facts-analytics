@@ -8,7 +8,7 @@ REQUIRED_FILES = [
     ".gitignore", ".env.example", "README.md", "requirements.txt", "requirements-dev.txt", "pytest.ini",
     "sql/init_raw_db.sql", "sql/audit_queries.sql",
     "src/__init__.py", "src/load_raw_to_postgres.py", "src/raw_audit.py", "src/staging.py", "src/fetch_from_dump.py", "src/cleaning.py",
-    "src/features.py",
+    "src/features.py", "src/models/__init__.py", "src/models/evaluate.py",
     "docs/problem_statement.md", "docs/scope_decision.md", "docs/data_dictionary.md",
 ]
 
