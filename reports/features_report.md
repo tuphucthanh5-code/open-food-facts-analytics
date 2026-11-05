@@ -2,7 +2,7 @@
 
 - Thời điểm: 2026-10-26T09:26:58+00:00
 - Đầu vào: `data/final/clean_features.parquet`, **29904** dòng. Không đọc nhãn.
-- Ngưỡng mặc định: thẻ có ở ≥ 100 sản phẩm; chốt ngưỡng ở Bước 8 bằng F1 trung bình theo lớp (GroupKFold).
+- Ngưỡng mặc định: thẻ có ở ≥ 100 sản phẩm; đã chốt ngưỡng 100 ở Bước 8 bằng F1 trung bình theo lớp (ngưỡng 20 chỉ hơn +0,005).
 - Số đặc trưng dưới đây do fit trên toàn bộ dữ liệu, CHỈ để mô tả. Ở Bước 7-8 pipeline được fit lại trên tập huấn luyện của từng fold, nên số cột mỗi fold có thể chênh vài cột.
 
 ## 1. Số đặc trưng theo nhóm và ngưỡng

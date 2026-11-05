@@ -25,5 +25,6 @@ Các cột bị cấm làm đặc trưng:
 
 ## Giới hạn đã biết
 - Tập huấn luyện gồm sản phẩm đã có bảng dinh dưỡng; sản phẩm thiếu dinh dưỡng thực tế có thể khác về loại hàng và thương hiệu.
-- Dữ liệu lấy qua Search API không phải mẫu ngẫu nhiên.
-- Công thức Nutri-Score có nhiều phiên bản; cần kiểm tra và thống nhất một phiên bản.
+- Dữ liệu ban đầu lấy qua Search API không phải mẫu ngẫu nhiên, nên đã bỏ; nguồn hiện tại là bản dump Parquet chính thức, mẫu ngẫu nhiên 30.000 sản phẩm (seed 42).
+- Công thức Nutri-Score có nhiều phiên bản và dump không ghi phiên bản. Bước 4 chẩn đoán: 94,0% khớp cả hai bảng ngưỡng, chỉ 0,1% chỉ khớp bản 2017, nên nhãn gần như theo bản 2023; không lọc, ghi là hạn chế.
+- Mô hình học từ sản phẩm có nhãn nên số đo trên tập kiểm tra chưa chắc giống sản phẩm thật sự thiếu dinh dưỡng (thường thiếu cả dữ liệu khác).

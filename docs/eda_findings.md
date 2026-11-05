@@ -36,7 +36,7 @@ Quy ước: **hạng D/E** gọi là nhóm "xấu"; **lift** = P(D/E | có thàn
 | 5, 6 | Không kết luận "thành phần X làm giảm hạng" chỉ từ lift; dùng SHAP trong từng nhóm sản phẩm | Bước 9 |
 | 9 | NOVA đưa vào như biến phân loại (one-hot), có thêm giá trị "thiếu" | Bước 6 |
 | 11, 12 | Giữ quy tắc chống rò rỉ; `assert_no_leaky_values` kiểm tra cả giá trị | Đã làm ở Bước 4 |
-| 13 | Ghi vào hạn chế: cờ thiếu dữ liệu mang thông tin về nhãn; thử mô hình có và không có các cờ | Bước 8 |
+| 13 | Ghi vào hạn chế: cờ thiếu dữ liệu mang thông tin về nhãn; thử mô hình có và không có các cờ | Bước 8 (đã làm: bỏ nhóm `flags`; thêm vào còn kém hơn, Macro-F1 -0,002) |
 | 14 | Đường cơ sở 1: đoán hạng phổ biến nhất (28,4%); đường cơ sở 2: hạng phổ biến nhất theo `pnns_groups_2` (50,5%, ước lượng trên chính dữ liệu này nên hơi lạc quan) | Bước 7 |
 
 ## Trả lời sơ bộ các câu hỏi nghiên cứu
@@ -45,7 +45,11 @@ Quy ước: **hạng D/E** gọi là nhóm "xấu"; **lift** = P(D/E | có thàn
 2. **Thành phần và phụ gia kéo xuống D/E:** các phụ gia e127, e476, e252 và các thành phần như dầu hạt cọ, sô cô la sữa có lift cao (phát hiện 5), nhưng phần lớn nằm trong đồ ngọt (phát hiện 6), nên cần SHAP để tách ảnh hưởng.
 3. **Đóng góp của nhóm đặc trưng, NOVA bổ sung bao nhiêu:** NOVA có liên hệ vừa phải với hạng (V = 0,295, phát hiện 8); mức bổ sung thực sự phải đo bằng thí nghiệm có và không có NOVA ở Bước 8.
 
-## Hạn chế của phân tích này
+### Cập nhật sau Bước 8 (5 fold dev, `reports/modeling_results.md`; chưa đo trên test)
+
+1. **Độ chính xác:** LightGBM tinh chỉnh đạt Macro-F1 0,625, accuracy 0,642, QWK 0,762, so với 0,412 / 0,462 / 0,463 của đoán theo `pnns_groups_2` (số 50,5% ở trên là ước lượng lạc quan; đo đúng cách chỉ 0,462). Hạng khó nhất là B (F1 0,492), dễ nhất là E (0,753). Nhóm sản phẩm khó nhất theo danh mục chưa phân tích, để Bước 9.
+2. **Thành phần và phụ gia kéo xuống D/E:** chưa trả lời, cần SHAP ở Bước 9.
+3. **Đóng góp của nhóm đặc trưng:** `categories` quan trọng nhất (bỏ đi Macro-F1 tụt 0,060), rồi thành phần (-0,027) và vị trí đường/muối/chất béo (-0,007). NOVA bổ sung rất ít: thêm vào sau khi đã có thành phần, phụ gia và danh mục chỉ +0,001, bỏ khỏi cấu hình đầy đủ -0,003 (nhỏ hơn độ lệch chuẩn 0,007 giữa các fold). Chưa đo riêng "thành phần + NOVA" không có danh mục, nên chưa kết luận NOVA mang thông tin mà danh mục không có hay không.
 
 - Lift, tương quan và entropy chỉ mô tả mối liên hệ, **không phải quan hệ nhân quả**.
 - Các phép tính dùng nhãn là để EDA; chúng không được đưa vào đặc trưng và không phải kết quả mô hình.

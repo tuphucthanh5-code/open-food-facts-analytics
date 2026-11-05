@@ -73,6 +73,7 @@ Search API trả lỗi HTTP 503 liên tục khi thu thập (17/10/2026), mỗi b
 - Thành phần: mỗi thẻ thành một cột 0/1; thẻ hiếm gộp vào cột `n_rare_ingredients`. Đã đếm trên `clean_features.parquet`
   (29.904 dòng, 53.793 thẻ): ngưỡng ≥ 20 sản phẩm giữ 1.491 cột, ngưỡng ≥ 100 giữ 627 cột. Ngưỡng là tham số; chọn
   bằng điểm F1 trung bình theo lớp (GroupKFold) ở Bước 8, nếu gần nhau thì chọn 100 cho gọn và dễ giải thích.
+  **(Đã chốt ở Bước 8: 100; ngưỡng 20 chỉ hơn +0,005, xem mục "Quyết định Bước 8".)**
   Danh sách thẻ giữ lại học trong từng fold huấn luyện; nếu đếm trên toàn bộ thì ghi là hạn chế (không dùng nhãn).
 - `pnns_groups_1` thiếu 20,0% (5.966 dòng): bổ sung từ `categories_tags` bằng ánh xạ thẻ danh mục -> nhóm, học chỉ từ
   các dòng đã có nhóm (trong tập huấn luyện của từng fold), KHÔNG dùng nhãn Nutri-Score. Giữ cờ `pnns_groups_1_imputed`.
@@ -82,7 +83,8 @@ Search API trả lỗi HTTP 503 liên tục khi thu thập (17/10/2026), mỗi b
   dòng). `nova_missing` trùng `flag_missing_nova`, chỉ giữ một. Không điền giá trị trung bình.
 - Các cờ thiếu dữ liệu (`flag_few_ingredients`, `flag_missing_nova`, `flag_missing_brand`,
   `any_off_taxonomy_ingredient`, `pnns_groups_1_imputed`): vẫn tạo đủ ở Bước 6, gom thành nhóm đặc trưng `flags` riêng;
-  Bước 8 so mô hình có và không có nhóm này rồi mới chốt.
+  Bước 8 so mô hình có và không có nhóm này rồi mới chốt. **(Đã chốt ở Bước 8: bỏ nhóm `flags`; có `flags` còn kém
+  hơn, Macro-F1 -0,002.)**
 - Đường cơ sở Bước 7: đoán hạng phổ biến nhất (28,4%) và đoán theo `pnns_groups_2`, tính lại bằng GroupKFold
   (học trên train, đo trên test) thay cho con số 50,5% ước lượng trên chính dữ liệu. Chỉ số chính: F1 trung bình theo lớp.
 

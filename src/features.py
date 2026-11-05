@@ -46,7 +46,7 @@ from sklearn.preprocessing import FunctionTransformer, OneHotEncoder, StandardSc
 from src.cleaning import as_list, assert_no_leakage, is_fat_oil_nut_seed, is_leaky_label
 
 # --- Tham số mặc định (ghi lại trong báo cáo) -------------------------------------------
-DEFAULT_MIN_FREQ = 100             # thẻ phải có ở >= 100 sản phẩm mới thành một cột; chốt ở Bước 8 (thử 20 và 100)
+DEFAULT_MIN_FREQ = 100             # thẻ phải có ở >= 100 sản phẩm mới thành một cột; đã chốt 100 ở Bước 8 (20 chỉ hơn +0,005)
 COMPARE_MIN_FREQS = (20, 100)
 DEFAULT_MIN_SUPPORT = 5            # thẻ danh mục phải có ở >= 5 sản phẩm đã biết nhóm mới được dùng để bổ sung
 DEFAULT_MIN_PURITY = 0.5           # nhóm phổ biến nhất của thẻ phải chiếm > nửa, nếu không thì để "missing"
@@ -549,7 +549,7 @@ def render_report(r, generated_at):
         f"- Thời điểm: {generated_at}",
         f"- Đầu vào: `data/final/clean_features.parquet`, **{r['rows']}** dòng. Không đọc nhãn.",
         f"- Ngưỡng mặc định: thẻ có ở ≥ {r['params']['default_min_freq']} sản phẩm; "
-        f"chốt ngưỡng ở Bước 8 bằng F1 trung bình theo lớp (GroupKFold).",
+        f"đã chốt ngưỡng 100 ở Bước 8 bằng F1 trung bình theo lớp (ngưỡng 20 chỉ hơn +0,005).",
         "- Số đặc trưng dưới đây do fit trên toàn bộ dữ liệu, CHỈ để mô tả. Ở Bước 7-8 pipeline được fit lại trên "
         "tập huấn luyện của từng fold, nên số cột mỗi fold có thể chênh vài cột.",
         "", "## 1. Số đặc trưng theo nhóm và ngưỡng", "",
