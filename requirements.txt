@@ -8,3 +8,6 @@ duckdb
 scipy
 seaborn
 scikit-learn
+lightgbm
+optuna
+joblib
