@@ -128,6 +128,87 @@ Search API trả lỗi HTTP 503 liên tục khi thu thập (17/10/2026), mỗi b
   0,462, QWK 0,463. Con số 50,5% của EDA là accuracy học và đo trên cùng dữ liệu nên lạc quan hơn 0,462.
   Xác suất của đường cơ sở theo nhóm được làm trơn (`smoothing = 1`) chỉ để log-loss xác định; không ảnh hưởng hạng đoán.
 
+## Quyết định Bước 8 (mô hình, 05/11/2026)
+- **Cấu hình đặc trưng chính: `min_freq = 100`, bỏ nhóm `flags`** (người dùng chốt 05/11/2026, trước khi đo).
+  - Ngưỡng 100: mỗi thẻ có ít nhất 100 ví dụ trong phần huấn luyện nên trọng số học được ổn định; ít đặc trưng hơn
+    (1.163 so với 2.858 cột ở ngưỡng 20, đếm trên toàn bộ dữ liệu trong `reports/features_report.md`; mỗi fold dev ít
+    hơn một chút), chạy nhanh hơn, giải thích bằng SHAP dễ hơn.
+  - Bỏ `flags` (`flag_few_ingredients`, `flag_missing_brand`, `share_ingredients_off_taxonomy`,
+    `pnns_groups_1_imputed`): các cột này mô tả chất lượng nhập liệu chứ không mô tả món ăn. EDA phát hiện 13 cho thấy
+    việc thiếu dữ liệu tự nó đoán được nhãn; sản phẩm mục tiêu (thiếu dinh dưỡng) thường thiếu cả dữ liệu khác, nên mô
+    hình dựa vào cờ có thể lệch. Không phải rò rỉ nhãn (cờ không tính từ dinh dưỡng).
+  - Bỏ `flags` không xóa hết tín hiệu "thiếu dữ liệu": `ingredients_n` (nhóm numeric), `nova_missing` (nhóm nova) và giá
+    trị `missing` của nhóm danh mục vẫn còn. Phép so sánh chỉ đo phần đóng góp thêm của 4 cột trên.
+  - Cả hai lựa chọn vẫn được đo lại một lần (mục 6 của `reports/modeling_results.md`) để có số liệu khi trình bày; nếu
+    chênh lệch lớn hơn độ lệch chuẩn giữa các fold thì báo lại người dùng trước khi giữ quyết định.
+- **Mô hình** (theo kế hoạch Bước 8), tất cả đi qua `evaluate()` của Bước 7 trên cùng 5 fold dev, đặc trưng fit lại
+  trong từng fold (lớp `NutriModel` gói pipeline đặc trưng và bộ phân loại):
+  - Logistic Regression đa lớp trên ma trận thưa, `class_weight="balanced"`; chọn C trong {0,03; 0,1; 0,3; 1}.
+  - Cây quyết định nông, `class_weight="balanced"`, mỗi lá ≥ 20 sản phẩm; chọn độ sâu trong {4; 6; 8}.
+  - LightGBM phân loại, `class_weight="balanced"`, dừng sớm; một bản tham số mặc định, một bản tinh chỉnh bằng Optuna.
+  - LightGBM hồi quy thứ tự: đoán số trên thang 0-4 (trọng số mẫu cân bằng theo hạng), cắt thành hạng bằng 4 ngưỡng
+    chọn để Macro-F1 cao nhất. Không cho xác suất nên không có log-loss.
+  - Không dùng SMOTE (ma trận thưa nhiều chiều); không làm MLP/DistilBERT (tùy chọn trong kế hoạch).
+- **Dừng sớm không dùng fold đang đo.** Mỗi lần fit, tách 1/10 số nhóm (`group_id`) của phần huấn luyện bằng
+  StratifiedGroupKFold (seed 42) làm tập dừng sớm; dừng sau 50 vòng không tiến bộ, tối đa 3.000 cây. Ngưỡng của hồi quy
+  thứ tự cũng chọn trên tập này. Lý do: dùng fold đang đo để dừng thì điểm fold đó bị lạc quan.
+- **Optuna**: 40 lần thử (kế hoạch 30-50), TPE seed 42, MedianPruner (từ lần thử 6, sau fold 2). Mục tiêu: Macro-F1
+  trung bình 5 fold dev. Lần thử đầu là tham số mặc định, nên kết quả không kém mặc định. Tham số dò: `learning_rate`,
+  `num_leaves`, `min_child_samples`, `reg_lambda`, `reg_alpha`, `colsample_bytree`, `subsample`. Vì chọn tham số trên
+  chính 5 fold này, Macro-F1 trên dev của mô hình đã tinh chỉnh hơi lạc quan; con số khách quan là tập test ở Bước 9.
+  Để tiết kiệm thời gian, khi chọn tham số đặc trưng được tính một lần cho mỗi fold rồi dùng lại (`build_fold_cache`),
+  cho kết quả giống hệt `NutriModel` trong `evaluate()` vì pipeline đặc trưng không dùng nhãn.
+- **Chọn mô hình tốt nhất**: Macro-F1 trung bình 5 fold cao nhất; phải vượt đường cơ sở `pnns_groups_2` trên cả
+  Macro-F1 (0,412) và QWK (0,463).
+- **Ablation** bằng mô hình tốt nhất, hai kiểu bổ sung cho nhau: cộng dồn theo kế hoạch (thành phần → + phụ gia →
+  + danh mục → + NOVA → tất cả) và bỏ từng nhóm khỏi cấu hình chính (cho biết nhóm nào không thay thế được).
+- **Lưu mô hình**: mô hình tốt nhất fit lại trên toàn bộ dev (không có test), lưu `artifacts/best_model.joblib` kèm tham
+  số, phiên bản thư viện và dấu vân tay tập test; không đẩy lên Git (`*.joblib` đã bị chặn). Dự đoán ngoài fold của nó
+  lưu `data/processed/oof_predictions.parquet` cho phân tích lỗi ở Bước 9.
+- **Thư viện mới**: `lightgbm` 4.7.0, `optuna` 5.0.0, `joblib` (thêm vào `requirements.txt`, chưa ghim phiên bản, việc
+  ghim để Bước 11). LightGBM 4.7 đổi `eval_set` thành `eval_X`/`eval_y`; mã tự chọn theo phiên bản đang cài.
+
+### Kết quả Bước 8 (chạy 05/11/2026, 89 phút; `reports/modeling_results.md`)
+- Chỉ dùng dev; tập test vẫn khóa (vân tay `2e511eab89b680b7`). 5 fold dev, trung bình ± độ lệch chuẩn giữa các fold:
+
+| Mô hình | Macro-F1 | QWK | Accuracy |
+|---|---|---|---|
+| Đường cơ sở: hạng phổ biến nhất | 0,088 | 0,000 | 0,284 |
+| Đường cơ sở: theo `pnns_groups_2` | 0,412 ± 0,004 | 0,463 | 0,462 |
+| Logistic Regression (C = 0,1) | 0,562 ± 0,010 | 0,710 | 0,579 |
+| Cây quyết định nông (sâu 8) | 0,481 ± 0,020 | 0,562 | 0,494 |
+| LightGBM mặc định | 0,607 ± 0,009 | 0,750 | 0,623 |
+| LightGBM hồi quy thứ tự + ngưỡng | 0,557 ± 0,015 | **0,786** | 0,564 |
+| **LightGBM Optuna** | **0,625 ± 0,007** | 0,762 | **0,642** |
+
+- **Mô hình tốt nhất: LightGBM Optuna**, vượt đường cơ sở `pnns_groups_2` trên cả Macro-F1 (+0,213) và QWK (+0,299),
+  tiêu chí hoàn thành Bước 8. Tham số: `learning_rate` 0,0263, `num_leaves` 189, `min_child_samples` 7, `reg_lambda`
+  0,035, `reg_alpha` 0,005, `colsample_bytree` 0,348, `subsample` 0,887; khoảng 218 cây mỗi fold. Optuna cải thiện
+  +0,018 Macro-F1 so với mặc định (0,607), lớn hơn độ lệch chuẩn giữa các fold (0,007).
+- **Xác nhận hai quyết định đã chốt** (đo lại, mục 6 của báo cáo): `min_freq = 20` cho 0,630 (+0,005) và có nhóm `flags`
+  cho 0,623 (-0,002). Cả hai chênh nhỏ hơn độ lệch chuẩn 0,007, nên giữ nguyên: ngưỡng 100 và bỏ `flags`. Với `flags`
+  còn kém hơn một chút, nghĩa là 4 cột này không đem lại gì thêm khi đã có `ingredients_n`, `nova_missing` và nhóm
+  `missing` của danh mục; bỏ chúng không làm mất độ chính xác.
+- **Ablation** (LightGBM Optuna): nhóm `categories` (pnns_groups_1/2, thẻ danh mục) là nhóm quan trọng nhất: bỏ đi
+  Macro-F1 tụt -0,060; khi cộng dồn, thêm nó vào "thành phần + phụ gia" tăng +0,063 (0,561 → 0,623). Thành phần: bỏ đi -0,027.
+  Vị trí đường/muối/chất béo: -0,007. Phụ gia, NOVA, nhãn bao bì, quốc gia: mỗi nhóm chỉ ≤ 0,003 (không phân biệt được với
+  nhiễu). `numeric` bỏ đi còn nhỉnh +0,001. Lưu ý: các nhóm có thông tin chồng lấn (ví dụ NOVA và phụ gia đều phản ánh mức
+  siêu chế biến), nên "bỏ một nhóm mà điểm gần như không đổi" không có nghĩa nhóm đó vô dụng khi đứng riêng.
+- **Theo quốc gia** (Macro-F1 ngoài fold): bán ở Pháp 0,650, bán ở Mỹ 0,619, còn lại 0,607. **Giữ lại Pháp** (học không
+  có hàng Pháp, cùng thương hiệu cũng bị bỏ): 0,601, tụt 0,049 so với 0,650; đây là mức giảm khi dùng mô hình cho thị
+  trường mới. Đường cơ sở `pnns_groups_2` tụt ít hơn (0,437 → 0,425) vì không học gì riêng cho từng nước.
+- **Theo hạng**: E dễ nhất (F1 0,753), A 0,715, D 0,589, C 0,575, **B khó nhất (0,492)**, đúng với hạng ít mẫu nhất
+  (11,0%) và ở giữa hai hạng kề.
+- **Hồi quy thứ tự**: QWK cao nhất (0,786) và 91,1% dự đoán lệch tối đa một hạng (phân loại LightGBM Optuna: 0,762
+  và 89,1%), nhưng Macro-F1 thấp hơn (0,557). Cách này ít nhầm xa nhưng kém ở việc chọn đúng hạng từng lớp. Chọn mô hình
+  theo Macro-F1 (chỉ số chính đã chốt ở Bước 7), nên LightGBM phân loại thắng; ghi lại để thảo luận ở Bước 9.
+- **Hạn chế ghi nhận**:
+  - Macro-F1 dev của mô hình tinh chỉnh hơi lạc quan (tham số chọn trên chính 5 fold); con số khách quan là test ở Bước 9.
+  - Nhiều lần thử tốt nhất của Optuna chạm cạnh không gian tìm (`min_child_samples` 5-7 khi cạnh dưới là 5;
+    `colsample_bytree` 0,31-0,38 khi cạnh dưới là 0,3). Năm lần thử tốt nhất chỉ chênh 0,002 nên mở rộng không đáng kể.
+  - Ablation chỉ chạy với mô hình tốt nhất (LightGBM); thứ hạng nhóm có thể khác với Logistic Regression.
+  - Mô hình dùng nhãn mà OFF tính tự động, một phần nhãn có thể trộn công thức 2017 và 2023 (xem Rủi ro đã biết).
+
 ## Rủi ro đã biết
 - Bản dump không có `pnns_groups_*`; dùng `food_groups_tags` thay thế (cấp 1 và cấp 2).
 - Quốc gia lệch mạnh; cần báo cáo hiệu năng theo quốc gia.

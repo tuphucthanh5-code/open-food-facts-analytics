@@ -21,7 +21,8 @@ chỉ dựa trên thành phần, phụ gia, danh mục và nhóm NOVA. Chi tiế
 │   ├── staging.py                 # làm phẳng dữ liệu thô (Bước 3)
 │   ├── cleaning.py                # làm sạch, loại trùng, tạo group_id (Bước 4)
 │   ├── features.py                # pipeline đặc trưng sklearn (Bước 6)
-│   └── models/evaluate.py         # chia dữ liệu, khóa test, evaluate(), đường cơ sở (Bước 7)
+│   ├── models/evaluate.py         # chia dữ liệu, khóa test, evaluate(), đường cơ sở (Bước 7)
+│   └── models/train.py            # huấn luyện, so sánh mô hình, ablation, Optuna (Bước 8)
 ├── tests/                     # kiểm thử tự động (pytest)
 ├── notebooks/00_raw_audit.ipynb
 ├── reports/                   # báo cáo kiểm toán (raw_audit.md / .json)
@@ -98,6 +99,16 @@ Mở `.env` và điền mật khẩu PostgreSQL cùng email liên hệ thật ch
    seed 42; thêm bài kiểm tra giữ lại Pháp. Kết quả: `data/final/split.parquet` (không đẩy lên Git) và
    `reports/evaluation_setup.md` / `.json` (cách chia, dấu vân tay tập test, kết quả hai đường cơ sở trên dev).
    Chạy lại mà tập chia khác tệp đã lưu thì lệnh dừng; chỉ ghi đè khi thêm `--overwrite-split`.
+
+9. Mô hình (Bước 8, khoảng 1 giờ):
+   ```bat
+   python -m src.models.train
+   ```
+   Chỉ dùng dev (tập test vẫn khóa). So sánh Logistic Regression, cây quyết định nông, LightGBM (mặc định, hồi quy
+   thứ tự, tinh chỉnh bằng Optuna 40 lần thử) với hai đường cơ sở trên cùng 5 fold; làm ablation theo nhóm đặc trưng.
+   Kết quả: `reports/modeling_results.md` / `.json`, mô hình tốt nhất `artifacts/best_model.joblib` và dự đoán ngoài
+   fold `data/processed/oof_predictions.parquet` (hai tệp sau không đẩy lên Git). Chạy thử nhanh:
+   `python -m src.models.train --trials 5 --no-ablation`.
 
 ## Kiểm thử
 ```bat

@@ -154,7 +154,9 @@ Nhóm (để bật/tắt khi làm ablation): `numeric`, `position`, `ingredients
 | `countries` | multi-hot `countries_tags` + `n_rare`; `n_countries` | ngưỡng `min_freq`; số quốc gia: log(1 + x) -> chuẩn hóa |
 | `flags` | `flag_few_ingredients`, `flag_missing_brand`, `share_ingredients_off_taxonomy`, `pnns_groups_1_imputed` | để nguyên |
 
-`min_freq` mặc định là 100 cho mọi cột danh sách thẻ (thử thêm 20; chốt ở Bước 8).
+`min_freq` là 100 cho mọi cột danh sách thẻ (đã chốt ở Bước 8; ngưỡng 20 chỉ đo lại để ghi vào báo cáo).
+Cấu hình chính của Bước 8 **không dùng nhóm `flags`** (xem `docs/scope_decision.md`); các cột của nhóm này vẫn được
+tạo để đo so sánh trong `reports/modeling_results.md`.
 Không dùng làm đặc trưng: `row_id`, `code`, `group_id` (chỉ để chia dữ liệu), `brand`, `brands_tags` (thương hiệu là
 nhóm GroupKFold nên thương hiệu ở tập kiểm tra không có trong tập huấn luyện), `product_name`, `lang`, `last_modified`,
 `flag_missing_nova` (trùng `nova_missing`).
@@ -180,3 +182,30 @@ Không chứa nhãn hay đặc trưng. Tệp nằm trong `data/final/` nên khô
 
 Quy tắc được `assert_split_valid` kiểm tra mỗi lần tạo: một `group_id` chỉ nằm ở một trong dev/test, chỉ ở một fold, và
 không nằm ở cả `train` lẫn `eval`. Lệnh dừng (không ghi đè) nếu tập chia mới khác tệp đã lưu, trừ khi có `--overwrite-split`.
+
+---
+
+# Kết quả mô hình (Bước 8)
+
+Tạo bởi `python -m src.models.train`. Chỉ dùng dòng dev; tập test vẫn khóa. Hai tệp dưới đây không đẩy lên Git.
+
+## `data/processed/oof_predictions.parquet` (dự đoán ngoài fold của mô hình tốt nhất)
+
+Một dòng cho mỗi dòng dev. Mỗi dự đoán do mô hình **không** được huấn luyện trên fold của dòng đó tạo ra, nên dùng được
+để phân tích lỗi ở Bước 9 mà không lạc quan.
+
+| Cột | Kiểu | Quy tắc |
+|---|---|---|
+| `row_id` | int | khóa ghép với clean_features, clean_labels và split |
+| `code` | string | mã vạch |
+| `fold` | int | fold (0-4) mà dòng này được dùng để đo |
+| `y_true` | string | hạng thật a-e |
+| `y_pred` | string | hạng dự đoán a-e |
+| `p_a`, `p_b`, `p_c`, `p_d`, `p_e` | float | xác suất từng hạng (tổng = 1). Không có nếu mô hình tốt nhất là hồi quy thứ tự |
+
+## `artifacts/best_model.joblib`
+
+Từ điển Python lưu bằng `joblib`: `model` (đối tượng `NutriModel` đã fit trên **toàn bộ dev**, gồm pipeline đặc trưng và
+bộ phân loại; `predict` nhận thẳng DataFrame dạng clean_features), `kind`, `params`, `min_freq`, `groups`, `trained_on`,
+`test_fingerprint` (để kiểm tra đúng tập test khi đo ở Bước 9), `n_features`, `cv_mean` (chỉ số 5 fold), `versions`
+(phiên bản Python và thư viện), `created_at`.
