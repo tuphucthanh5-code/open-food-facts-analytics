@@ -158,3 +158,25 @@ Nhóm (để bật/tắt khi làm ablation): `numeric`, `position`, `ingredients
 Không dùng làm đặc trưng: `row_id`, `code`, `group_id` (chỉ để chia dữ liệu), `brand`, `brands_tags` (thương hiệu là
 nhóm GroupKFold nên thương hiệu ở tập kiểm tra không có trong tập huấn luyện), `product_name`, `lang`, `last_modified`,
 `flag_missing_nova` (trùng `nova_missing`).
+
+---
+
+# Tập chia dữ liệu (Bước 7)
+
+Tạo bởi `python -m src.models.evaluate`. Một dòng cho mỗi dòng của `clean_features.parquet`, cùng `row_id` và cùng thứ tự.
+Không chứa nhãn hay đặc trưng. Tệp nằm trong `data/final/` nên không đẩy lên Git; dấu vân tay tập test ghi trong
+`reports/evaluation_setup.md` để đối chiếu.
+
+## `data/final/split.parquet`
+
+| Cột | Kiểu | Quy tắc |
+|---|---|---|
+| `row_id` | int | khóa ghép với clean_features và clean_labels |
+| `code` | string | mã vạch, để đối chiếu và tính dấu vân tay tập test |
+| `group_id` | string | nhóm GroupKFold (lấy từ clean_features) |
+| `split` | string | `dev` (80%) hoặc `test` (20%, khóa đến Bước 9). StratifiedGroupKFold 5 phần theo `group_id`, seed 42, phần đầu tiên là test |
+| `fold` | int | 0-4 cho dòng dev (StratifiedGroupKFold 5 fold trong dev, seed 42); -1 cho dòng test |
+| `country_holdout` | string | vai trò trong bài kiểm tra giữ lại Pháp (chỉ dòng dev): `eval` = bán ở Pháp (`en:france` trong `countries_tags`); `train` = không bán ở Pháp; `excluded` = không bán ở Pháp nhưng cùng `group_id` với một dòng `eval`, nên bị bỏ khỏi phần huấn luyện. Dòng test có giá trị `test` |
+
+Quy tắc được `assert_split_valid` kiểm tra mỗi lần tạo: một `group_id` chỉ nằm ở một trong dev/test, chỉ ở một fold, và
+không nằm ở cả `train` lẫn `eval`. Lệnh dừng (không ghi đè) nếu tập chia mới khác tệp đã lưu, trừ khi có `--overwrite-split`.

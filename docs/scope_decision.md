@@ -105,6 +105,29 @@ Search API trả lỗi HTTP 503 liên tục khi thu thập (17/10/2026), mỗi b
 - `flag_missing_nova` không đưa vào vì trùng `nova_missing`. Khi Bước 8 bỏ nhóm `flags`, mô hình vẫn biết NOVA bị thiếu
   qua nhóm `nova`; muốn bỏ hẳn tín hiệu "thiếu" thì phải bỏ cả cột `nova_missing`.
 
+## Quyết định Bước 7 (chia dữ liệu và đánh giá, 04/11/2026)
+- Trước Bước 7 đã chạy lại toàn bộ chuỗi từ PostgreSQL (raw_audit -> staging -> cleaning -> features) vào thư mục tạm
+  và so với tệp hiện có: 5 tệp parquet giống từng giá trị, `raw_audit.json`, `cleaning_report.json`,
+  `features_report.json` và `feature_names.txt` không đổi. Dữ liệu ổn định, chưa cần làm lại bước nào.
+- Tập test 20%: dùng **StratifiedGroupKFold** 5 phần theo `group_id` (seed 42), lấy phần đầu tiên làm test (5.982 dòng,
+  3.053 nhóm). Lý do: so với GroupShuffleSplit (thử cùng seed: 21,4% dữ liệu, tỷ lệ hạng lệch tới 0,75 điểm %), cách
+  này cho đúng 20,0% và tỷ lệ từng hạng lệch tối đa 0,01 điểm %, lại cùng công cụ với 5 fold bên trong.
+- Khóa tập test: lưu `data/final/split.parquet`; `select_test` chỉ trả dữ liệu khi gọi với `final=True` (Bước 9);
+  báo cáo ghi dấu vân tay SHA-256 của danh sách mã vạch test (`2e511eab89b680b7`); lệnh dừng nếu tập chia mới khác tệp
+  đã lưu (chỉ ghi đè với `--overwrite-split`, và phải ghi lý do vào tệp này). Đường cơ sở cũng không được đo trên test.
+- Dev 80% (23.922 dòng, 12.088 nhóm) chia 5 fold bằng StratifiedGroupKFold (seed 42); mọi mô hình ở Bước 8 dùng cùng
+  các fold này qua hàm `evaluate()`, hàm này tạo và fit một mô hình mới trong từng fold.
+- Bài kiểm tra giữ lại quốc gia: **chỉ Pháp** (chọn 04/11/2026, gọn hơn khi trình bày; Pháp là thị trường gốc của
+  Nutri-Score). Chạy trong dev, không đụng tập test. Đo trên sản phẩm có `en:france` (6.883 dòng), huấn luyện trên sản
+  phẩm không bán ở Pháp (13.248 dòng). **Bỏ khỏi phần huấn luyện** 3.791 dòng (578 nhóm) không bán ở Pháp nhưng cùng
+  `group_id` với hàng Pháp, theo đúng nguyên tắc GroupKFold, để kết quả không lạc quan nhờ "nhớ" thương hiệu.
+- Bộ chỉ số: Macro-F1 (chính), Weighted-F1, accuracy, QWK, tỷ lệ lệch ≤ 1 hạng, MAE thang 0-4, log-loss. Báo cáo thêm
+  theo nhóm quốc gia (bán ở Pháp / bán ở Mỹ / còn lại; sản phẩm bán ở cả hai nước tính ở cả hai nhóm).
+- Hai đường cơ sở (5 fold trên dev): đoán hạng phổ biến nhất: Macro-F1 0,088, accuracy 0,284; đoán hạng phổ biến nhất
+  theo `pnns_groups_2` (thiếu nhóm thành `missing`, nhóm chưa gặp thành hạng phổ biến nhất): Macro-F1 0,412, accuracy
+  0,462, QWK 0,463. Con số 50,5% của EDA là accuracy học và đo trên cùng dữ liệu nên lạc quan hơn 0,462.
+  Xác suất của đường cơ sở theo nhóm được làm trơn (`smoothing = 1`) chỉ để log-loss xác định; không ảnh hưởng hạng đoán.
+
 ## Rủi ro đã biết
 - Bản dump không có `pnns_groups_*`; dùng `food_groups_tags` thay thế (cấp 1 và cấp 2).
 - Quốc gia lệch mạnh; cần báo cáo hiệu năng theo quốc gia.

@@ -19,7 +19,9 @@ chỉ dựa trên thành phần, phụ gia, danh mục và nhóm NOVA. Chi tiế
 │   ├── load_raw_to_postgres.py    # nạp JSON thô vào PostgreSQL
 │   ├── raw_audit.py               # kiểm toán dữ liệu thô (Bước 2)
 │   ├── staging.py                 # làm phẳng dữ liệu thô (Bước 3)
-│   └── cleaning.py                # làm sạch, loại trùng, tạo group_id (Bước 4)
+│   ├── cleaning.py                # làm sạch, loại trùng, tạo group_id (Bước 4)
+│   ├── features.py                # pipeline đặc trưng sklearn (Bước 6)
+│   └── models/evaluate.py         # chia dữ liệu, khóa test, evaluate(), đường cơ sở (Bước 7)
 ├── tests/                     # kiểm thử tự động (pytest)
 ├── notebooks/00_raw_audit.ipynb
 ├── reports/                   # báo cáo kiểm toán (raw_audit.md / .json)
@@ -87,6 +89,15 @@ Mở `.env` và điền mật khẩu PostgreSQL cùng email liên hệ thật ch
    Chỉ đọc `data/final/clean_features.parquet`, không đọc nhãn. Kết quả: `reports/features_report.md` / `.json`
    (số đặc trưng theo nhóm, ngưỡng 20 và 100, độ chính xác phép bổ sung `pnns_groups_1`) và `reports/feature_names.txt`.
    Bước 7-8 dùng `build_feature_pipeline` / `fit_feature_pipeline` trong `src/features.py` và chỉ fit trên tập huấn luyện.
+
+8. Chia dữ liệu và đường cơ sở (Bước 7):
+   ```bat
+   python -m src.models.evaluate
+   ```
+   Chia 20% làm tập test (khóa đến Bước 9) và 5 fold trên 80% còn lại, theo `group_id` bằng StratifiedGroupKFold,
+   seed 42; thêm bài kiểm tra giữ lại Pháp. Kết quả: `data/final/split.parquet` (không đẩy lên Git) và
+   `reports/evaluation_setup.md` / `.json` (cách chia, dấu vân tay tập test, kết quả hai đường cơ sở trên dev).
+   Chạy lại mà tập chia khác tệp đã lưu thì lệnh dừng; chỉ ghi đè khi thêm `--overwrite-split`.
 
 ## Kiểm thử
 ```bat
