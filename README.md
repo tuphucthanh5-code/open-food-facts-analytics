@@ -1,38 +1,38 @@
 # Dự đoán Nutri-Score từ thành phần, phụ gia, danh mục và NOVA
 
 Dự án dùng dữ liệu Open Food Facts để dự đoán hạng Nutri-Score (A–E) cho sản phẩm thiếu bảng dinh dưỡng,
-chỉ dựa trên thành phần, phụ gia, danh mục và nhóm NOVA. Chi tiết xem `docs/problem_statement.md`.
+chỉ dựa trên thành phần, phụ gia, danh mục, nhóm NOVA và quốc gia. Chi tiết: `docs/problem_statement.md`.
+
+**Sản phẩm chính là 5 notebook chạy sẵn, có kết quả**, đi theo quy trình 9 bước của môn học:
+
+| Notebook | Bước trong quy trình |
+|---|---|
+| `notebooks/01_bai_toan.ipynb` | 1. Business Understanding, 2. Analytic Approach, 3. Data Requirements |
+| `notebooks/02_thu_thap_du_lieu.ipynb` | 4. Data Collection: DuckDB SQL trên bản dump → PostgreSQL (JSONB) → SQL trích xuất |
+| `notebooks/03_eda.ipynb` | 5. Data Understanding / EDA: kiểm toán bằng SQL + khám phá bằng pandas |
+| `notebooks/04_chuan_bi_du_lieu.ipynb` | 6. Data Preparation: làm sạch, chia train/validation/test, đặc trưng |
+| `notebooks/05_mo_hinh.ipynb` | 7. Modeling, 8. Evaluation trên tập dev (tập test còn khóa) |
 
 ## Cấu trúc thư mục
 ```text
 .
-├── .env.example               # mẫu cấu hình (không chứa mật khẩu thật)
-├── .github/workflows/tests.yml  # tự chạy pytest mỗi lần push
-├── requirements.txt           # thư viện chạy
-├── requirements-dev.txt       # thêm pytest, jupyter, matplotlib
-├── pytest.ini
+├── notebooks/                 # 5 notebook ở trên (sản phẩm nộp chính)
+├── src/                       # mã dùng lại nhiều lần, mỗi tệp ngắn
+│   ├── fetch_from_dump.py     # Bước 4: lấy mẫu từ bản dump Parquet bằng SQL (DuckDB)
+│   ├── load_raw_to_postgres.py# Bước 4: nạp JSON thô vào PostgreSQL
+│   ├── db.py                  # kết nối PostgreSQL (.env), chạy câu SQL -> DataFrame
+│   ├── cleaning.py            # Bước 6: chuẩn hóa, lọc, loại trùng, chống rò rỉ nhãn, group_id
+│   ├── features.py            # Bước 6: sklearn Pipeline đặc trưng
+│   └── modeling.py            # Bước 6-8: chia dữ liệu, khóa test, chỉ số, đánh giá chéo, mô hình
 ├── sql/
 │   ├── init_raw_db.sql        # tạo bảng raw_products (JSONB)
-│   └── audit_queries.sql      # truy vấn kiểm toán dữ liệu thô
-├── src/
-│   ├── fetch_from_dump.py         # lấy mẫu từ bản dump Parquet chính thức (nguồn chính)
-│   ├── load_raw_to_postgres.py    # nạp JSON thô vào PostgreSQL
-│   ├── raw_audit.py               # kiểm toán dữ liệu thô (Bước 2)
-│   ├── staging.py                 # làm phẳng dữ liệu thô (Bước 3)
-│   ├── cleaning.py                # làm sạch, loại trùng, tạo group_id (Bước 4)
-│   ├── features.py                # pipeline đặc trưng sklearn (Bước 6)
-│   ├── models/evaluate.py         # chia dữ liệu, khóa test, evaluate(), đường cơ sở (Bước 7)
-│   └── models/train.py            # huấn luyện, so sánh mô hình, ablation, Optuna (Bước 8)
-├── tests/                     # kiểm thử tự động (pytest)
-├── notebooks/00_raw_audit.ipynb
-├── reports/                   # báo cáo kiểm toán (raw_audit.md / .json)
-├── docs/
-│   ├── problem_statement.md
-│   ├── scope_decision.md      # ghi quyết định phạm vi sau kiểm toán
-│   └── data_dictionary.md     # từ điển cột của staging
-├── data/{raw,processed,final,external}/  # dữ liệu cục bộ, không đẩy lên Git
-│                                  # external/ chứa food.parquet tải từ Hugging Face
-└── logs/                          # nhật ký cục bộ, không đẩy lên Git
+│   ├── audit_queries.sql      # 11 truy vấn kiểm toán dữ liệu thô
+│   └── extract_products.sql   # JSONB -> bảng phẳng
+├── tests/                     # pytest
+├── docs/                      # problem_statement, scope_decision, data_dictionary, eda_findings, giải thích mã
+├── reports/                   # figures/ (biểu đồ do notebook lưu), model_results.json
+├── artifacts/                 # best_model.joblib (cục bộ, không đẩy lên Git)
+└── data/{raw,processed,final,external}/   # dữ liệu cục bộ, không đẩy lên Git
 ```
 
 ## Cài đặt
@@ -42,91 +42,45 @@ venv\Scripts\activate
 pip install -r requirements-dev.txt
 copy .env.example .env
 ```
-Mở `.env` và điền mật khẩu PostgreSQL cùng email liên hệ thật cho `OFF_USER_AGENT`.
+Mở `.env` và điền mật khẩu PostgreSQL (tệp này không bao giờ đẩy lên Git).
 
-## Chạy
-1. Tạo cơ sở dữ liệu và bảng:
+## Chạy lại từ đầu
+1. Tải bản dump (khoảng 8 GB) và lấy mẫu 30.000 sản phẩm bằng SQL:
+   ```bat
+   curl -L -C - -o data\external\food.parquet "https://huggingface.co/datasets/openfoodfacts/product-database/resolve/main/food.parquet?download=true"
+   python -m src.fetch_from_dump --n 30000 --seed 42
+   ```
+2. Tạo bảng và nạp vào PostgreSQL (raw layer):
    ```bat
    psql -U postgres -c "CREATE DATABASE food_facts_db;"
    psql -U postgres -d food_facts_db -f sql\init_raw_db.sql
+   python -m src.load_raw_to_postgres data\raw\raw_products_dump_<thời điểm>.jsonl.gz
    ```
-2. Thu thập dữ liệu. Nguồn chính là bản dump Parquet chính thức (khoảng 8 GB):
+3. Kiểm toán dữ liệu thô: chạy từng câu trong `sql/audit_queries.sql` bằng pgAdmin/psql, hoặc mở notebook 03.
+4. Chạy các notebook theo thứ tự (mỗi notebook lưu kết quả cho notebook sau):
    ```bat
-   curl -L -C - -o data\external\food.parquet "https://huggingface.co/datasets/openfoodfacts/product-database/resolve/main/food.parquet?download=true"
-   python -m src.fetch_from_dump --describe
-   python -m src.fetch_from_dump --n 30000 --seed 42
+   jupyter nbconvert --to notebook --execute --inplace notebooks\01_bai_toan.ipynb notebooks\02_thu_thap_du_lieu.ipynb notebooks\03_eda.ipynb notebooks\04_chuan_bi_du_lieu.ipynb
+   jupyter nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=7200 notebooks\05_mo_hinh.ipynb
    ```
-   Mẫu ngẫu nhiên tự nhiên, tái lập được nhờ `--seed`; chỉ lấy sản phẩm có nhãn A-E và có `ingredients_tags`,
-   không đọc cột cá nhân. Search API đã bỏ vì giới hạn 10 request/phút, hay trả lỗi 503 và mẫu không ngẫu nhiên.
-3. Nạp vào PostgreSQL:
-   ```bat
-   python src\load_raw_to_postgres.py
-   ```
-4. Kiểm toán dữ liệu thô (đọc từ tệp, không cần PostgreSQL):
-   ```bat
-   python -m src.raw_audit
-   ```
-   hoặc đọc từ cơ sở dữ liệu: `python -m src.raw_audit --source db`.
-   Kết quả nằm ở `reports/raw_audit.md` và `reports/raw_audit.json`.
+   Notebook 05 mất khoảng 45 phút (tinh chỉnh Optuna và ablation).
 
-5. Staging: làm phẳng JSON thô thành hai bảng parquet tách biệt (đặc trưng / kiểm toán):
-   ```bat
-   python -m src.staging
-   ```
-   Kết quả: `data/processed/staging_features.parquet`, `data/processed/staging_audit.parquet`
-   (không đẩy lên Git) và `reports/staging_report.md`. Xem `docs/data_dictionary.md`.
-
-6. Làm sạch (Bước 4):
-   ```bat
-   python -m src.cleaning
-   ```
-   Kết quả: `data/final/clean_features.parquet` (X), `data/final/clean_labels.parquet` (y),
-   `data/processed/clean_audit.parquet` (chỉ cho EDA) và `reports/cleaning_report.md` / `.json` (phễu làm sạch).
-
-7. Đặc trưng (Bước 6):
-   ```bat
-   python -m src.features
-   ```
-   Chỉ đọc `data/final/clean_features.parquet`, không đọc nhãn. Kết quả: `reports/features_report.md` / `.json`
-   (số đặc trưng theo nhóm, ngưỡng 20 và 100, độ chính xác phép bổ sung `pnns_groups_1`) và `reports/feature_names.txt`.
-   Bước 7-8 dùng `build_feature_pipeline` / `fit_feature_pipeline` trong `src/features.py` và chỉ fit trên tập huấn luyện.
-
-8. Chia dữ liệu và đường cơ sở (Bước 7):
-   ```bat
-   python -m src.models.evaluate
-   ```
-   Chia 20% làm tập test (khóa đến Bước 9) và 5 fold trên 80% còn lại, theo `group_id` bằng StratifiedGroupKFold,
-   seed 42; thêm bài kiểm tra giữ lại Pháp. Kết quả: `data/final/split.parquet` (không đẩy lên Git) và
-   `reports/evaluation_setup.md` / `.json` (cách chia, dấu vân tay tập test, kết quả hai đường cơ sở trên dev).
-   Chạy lại mà tập chia khác tệp đã lưu thì lệnh dừng; chỉ ghi đè khi thêm `--overwrite-split`.
-
-9. Mô hình (Bước 8, khoảng 1 giờ):
-   ```bat
-   python -m src.models.train
-   ```
-   Chỉ dùng dev (tập test vẫn khóa). So sánh Logistic Regression, cây quyết định nông, LightGBM (mặc định, hồi quy
-   thứ tự, tinh chỉnh bằng Optuna 40 lần thử) với hai đường cơ sở trên cùng 5 fold; làm ablation theo nhóm đặc trưng.
-   Kết quả: `reports/modeling_results.md` / `.json`, mô hình tốt nhất `artifacts/best_model.joblib` và dự đoán ngoài
-   fold `data/processed/oof_predictions.parquet` (hai tệp sau không đẩy lên Git). Chạy thử nhanh:
-   `python -m src.models.train --trials 5 --no-ablation`.
+Tập test 20% (`split == "test"` trong `data/final/split.parquet`) bị khóa: mã chỉ trả về tập này khi gọi
+`select_test(..., final=True)`, việc chỉ làm một lần ở bước đánh giá cuối.
 
 ## Kiểm thử
 ```bat
-pytest                      # toàn bộ test (test tích hợp tự bỏ qua nếu không có PostgreSQL)
-pytest -m integration -v    # chỉ test cần PostgreSQL thật
-pytest tests\test_raw_audit.py -v
+pytest -q                   # toàn bộ test (test cần PostgreSQL tự bỏ qua nếu không kết nối được)
+pytest -m integration -v    # chỉ test chạy SQL trên PostgreSQL thật
 ```
-Các test chạy không cần mạng và không cần máy chủ PostgreSQL (đối tượng giả thay thế).
-Test tích hợp đọc cấu hình từ `.env` và tự bỏ qua khi không kết nối được.
-
-## Giới hạn tốc độ
-Search API của Open Food Facts giới hạn khoảng 10 request/phút cho mỗi IP, nên script giãn cách tối thiểu 7 giây
-giữa các request. Hãy kiểm tra tài liệu hiện hành của Open Food Facts trước khi thu thập số lượng lớn.
 
 ## Dữ liệu và giấy phép
-Dữ liệu từ [Open Food Facts](https://world.openfoodfacts.org) (bản dump Parquet trên Hugging Face: `openfoodfacts/product-database`), phát hành theo Open Database License (ODbL);
-hình ảnh theo CC BY-SA. Kho mã này không chứa dữ liệu thật; hãy chạy script để tải.
-Không lưu các trường định danh người đóng góp.
+Dữ liệu từ [Open Food Facts](https://world.openfoodfacts.org) (bản dump Parquet trên Hugging Face:
+`openfoodfacts/product-database`), giấy phép Open Database License (ODbL); hình ảnh theo CC BY-SA.
+Kho mã không chứa dữ liệu thật; hãy chạy các bước trên để tải. Không thu thập trường định danh người đóng góp
+(`creator`, `editors_tags`...).
 
-## Giới hạn của dự án
-Sẽ bổ sung sau khi có kết quả kiểm toán.
+## Giới hạn
+- Mô hình học từ sản phẩm *có* bảng dinh dưỡng; sản phẩm thiếu dinh dưỡng ngoài đời có thể khác loại.
+- Không biết *lượng* đường/muối/chất béo nên khó phân biệt hai hạng kề nhau (B/C, C/D).
+- Dữ liệu nghiêng về Mỹ và Pháp; ở thị trường chưa từng thấy, điểm giảm vài phần trăm.
+- Công thức Nutri-Score có nhiều phiên bản; bản dump không ghi phiên bản (nhãn gần như theo công thức 2023).

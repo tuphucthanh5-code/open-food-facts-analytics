@@ -1,13 +1,13 @@
-requests
-urllib3
 psycopg2-binary
-pandas
 python-dotenv
+pandas
 pyarrow
 duckdb
+numpy
 scipy
-seaborn
 scikit-learn
 lightgbm
 optuna
 joblib
+matplotlib
+seaborn

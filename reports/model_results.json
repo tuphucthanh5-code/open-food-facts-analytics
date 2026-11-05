@@ -1,0 +1,221 @@
+{
+  "best_model": "LightGBM (Optuna)",
+  "best_params": {
+    "n_estimators": 450,
+    "learning_rate": 0.023696519795929575,
+    "num_leaves": 187,
+    "min_child_samples": 3,
+    "colsample_bytree": 0.6453950698667689,
+    "subsample": 0.9244648639872316,
+    "reg_lambda": 1.726268877888677,
+    "subsample_freq": 1
+  },
+  "comparison": {
+    "Đường cơ sở: hạng phổ biến nhất": {
+      "mean": {
+        "macro_f1": 0.0885,
+        "accuracy": 0.2841,
+        "precision": 0.0568,
+        "recall": 0.2,
+        "qwk": 0.0,
+        "within_one": 0.5219,
+        "roc_auc": 0.5,
+        "log_loss": 1.5591
+      },
+      "std": {
+        "macro_f1": 0.0,
+        "accuracy": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "qwk": 0.0,
+        "within_one": 0.0002,
+        "roc_auc": 0.0,
+        "log_loss": 0.0001
+      }
+    },
+    "Đường cơ sở: theo pnns_groups_2": {
+      "mean": {
+        "macro_f1": 0.4117,
+        "accuracy": 0.462,
+        "precision": 0.4558,
+        "recall": 0.4195,
+        "qwk": 0.4632,
+        "within_one": 0.7338,
+        "roc_auc": 0.7526,
+        "log_loss": 1.2813
+      },
+      "std": {
+        "macro_f1": 0.0037,
+        "accuracy": 0.0033,
+        "precision": 0.008,
+        "recall": 0.0044,
+        "qwk": 0.0117,
+        "within_one": 0.0034,
+        "roc_auc": 0.0052,
+        "log_loss": 0.01
+      }
+    },
+    "Logistic Regression (C=0.1)": {
+      "mean": {
+        "macro_f1": 0.5624,
+        "accuracy": 0.5792,
+        "precision": 0.5589,
+        "recall": 0.5743,
+        "qwk": 0.7108,
+        "within_one": 0.8575,
+        "roc_auc": 0.8558,
+        "log_loss": 1.0229
+      },
+      "std": {
+        "macro_f1": 0.0107,
+        "accuracy": 0.0104,
+        "precision": 0.0092,
+        "recall": 0.0093,
+        "qwk": 0.0148,
+        "within_one": 0.0069,
+        "roc_auc": 0.004,
+        "log_loss": 0.0152
+      }
+    },
+    "Decision Tree (sâu 16)": {
+      "mean": {
+        "macro_f1": 0.5156,
+        "accuracy": 0.53,
+        "precision": 0.516,
+        "recall": 0.5276,
+        "qwk": 0.6412,
+        "within_one": 0.8256,
+        "roc_auc": 0.8189,
+        "log_loss": 1.8971
+      },
+      "std": {
+        "macro_f1": 0.0081,
+        "accuracy": 0.0052,
+        "precision": 0.0096,
+        "recall": 0.0058,
+        "qwk": 0.0268,
+        "within_one": 0.0226,
+        "roc_auc": 0.0044,
+        "log_loss": 0.1116
+      }
+    },
+    "Random Forest (300 cây)": {
+      "mean": {
+        "macro_f1": 0.6059,
+        "accuracy": 0.6245,
+        "precision": 0.6043,
+        "recall": 0.6095,
+        "qwk": 0.7402,
+        "within_one": 0.8777,
+        "roc_auc": 0.8774,
+        "log_loss": 0.9729
+      },
+      "std": {
+        "macro_f1": 0.0083,
+        "accuracy": 0.0059,
+        "precision": 0.0078,
+        "recall": 0.0083,
+        "qwk": 0.015,
+        "within_one": 0.0076,
+        "roc_auc": 0.0034,
+        "log_loss": 0.0116
+      }
+    },
+    "LightGBM (mặc định)": {
+      "mean": {
+        "macro_f1": 0.599,
+        "accuracy": 0.6171,
+        "precision": 0.5953,
+        "recall": 0.6059,
+        "qwk": 0.7418,
+        "within_one": 0.8791,
+        "roc_auc": 0.877,
+        "log_loss": 0.9439
+      },
+      "std": {
+        "macro_f1": 0.0073,
+        "accuracy": 0.0051,
+        "precision": 0.0067,
+        "recall": 0.0078,
+        "qwk": 0.0156,
+        "within_one": 0.0076,
+        "roc_auc": 0.0035,
+        "log_loss": 0.0129
+      }
+    },
+    "LightGBM (Optuna)": {
+      "mean": {
+        "macro_f1": 0.6249,
+        "accuracy": 0.6434,
+        "precision": 0.6274,
+        "recall": 0.6234,
+        "qwk": 0.7679,
+        "within_one": 0.894,
+        "roc_auc": 0.887,
+        "log_loss": 0.9108
+      },
+      "std": {
+        "macro_f1": 0.0069,
+        "accuracy": 0.0054,
+        "precision": 0.0076,
+        "recall": 0.0063,
+        "qwk": 0.0144,
+        "within_one": 0.0068,
+        "roc_auc": 0.003,
+        "log_loss": 0.0135
+      }
+    }
+  },
+  "ablation": [
+    {
+      "cấu hình": "chỉ thành phần (ingredients + position)",
+      "Macro-F1": 0.557,
+      "thay đổi so với đủ nhóm": -0.068
+    },
+    {
+      "cấu hình": "thành phần + NOVA",
+      "Macro-F1": 0.559,
+      "thay đổi so với đủ nhóm": -0.066
+    },
+    {
+      "cấu hình": "bỏ categories",
+      "Macro-F1": 0.566,
+      "thay đổi so với đủ nhóm": -0.058
+    },
+    {
+      "cấu hình": "bỏ ingredients",
+      "Macro-F1": 0.593,
+      "thay đổi so với đủ nhóm": -0.032
+    },
+    {
+      "cấu hình": "bỏ position",
+      "Macro-F1": 0.619,
+      "thay đổi so với đủ nhóm": -0.006
+    },
+    {
+      "cấu hình": "bỏ labels",
+      "Macro-F1": 0.622,
+      "thay đổi so với đủ nhóm": -0.003
+    },
+    {
+      "cấu hình": "bỏ additives",
+      "Macro-F1": 0.623,
+      "thay đổi so với đủ nhóm": -0.002
+    },
+    {
+      "cấu hình": "bỏ numeric",
+      "Macro-F1": 0.624,
+      "thay đổi so với đủ nhóm": -0.001
+    },
+    {
+      "cấu hình": "bỏ nova",
+      "Macro-F1": 0.624,
+      "thay đổi so với đủ nhóm": -0.001
+    },
+    {
+      "cấu hình": "bỏ countries",
+      "Macro-F1": 0.624,
+      "thay đổi so với đủ nhóm": -0.0
+    }
+  ]
+}

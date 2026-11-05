@@ -1,5 +1,7 @@
 # Quyết định phạm vi và nguồn dữ liệu
 
+> **Lưu ý đọc tài liệu (05/11/2026):** từ ngày này mã đã được rút gọn theo quy trình 9 bước của giảng viên (mục cuối). Tên tệp cũ nhắc trong các mục trước nay tương ứng: `raw_audit.py` → `sql/audit_queries.sql` + notebook 03; `staging.py` → `sql/extract_products.sql` + notebook 02; `src/models/evaluate.py`, `train.py` → `src/modeling.py` + notebook 05; `reports/*.md` → output của notebook.
+
 ## Kết quả kiểm toán lần 1 (Search API, 17/10/2026)
 
 | Chỉ số | Giá trị | Nhận xét |
@@ -127,7 +129,10 @@ Search API trả lỗi HTTP 503 liên tục khi thu thập (17/10/2026), mỗi b
   theo nhóm quốc gia (bán ở Pháp / bán ở Mỹ / còn lại; sản phẩm bán ở cả hai nước tính ở cả hai nhóm).
 - Hai đường cơ sở (5 fold trên dev): đoán hạng phổ biến nhất: Macro-F1 0,088, accuracy 0,284; đoán hạng phổ biến nhất
   theo `pnns_groups_2` (thiếu nhóm thành `missing`, nhóm chưa gặp thành hạng phổ biến nhất): Macro-F1 0,412, accuracy
-  0,462, QWK 0,463. Con số 50,5% của EDA là accuracy học và đo trên cùng dữ liệu nên lạc quan hơn 0,462.
+  0,462, QWK 0,463. **Sửa lại ngày 05/11/2026:** con số 50,5% của EDA không so trực tiếp được với 0,462. EDA chỉ tính
+  trên 79,5% sản phẩm có `pnns_groups_2` (đo lại theo cách đó trên 5 fold dev được 0,502), còn đường cơ sở tính trên
+  mọi sản phẩm, nhóm `missing` chỉ đoán đúng khoảng 31%. Học và đo trên cùng dữ liệu chỉ thêm khoảng 0,3 điểm
+  (0,465 so với 0,462 trên dev). Trước đó ghi nhầm là "50,5% lạc quan vì học và đo trên cùng dữ liệu".
   Xác suất của đường cơ sở theo nhóm được làm trơn (`smoothing = 1`) chỉ để log-loss xác định; không ảnh hưởng hạng đoán.
 
 ## Quyết định Bước 8 (mô hình, 05/11/2026)
@@ -211,9 +216,69 @@ Search API trả lỗi HTTP 503 liên tục khi thu thập (17/10/2026), mỗi b
   - Ablation chỉ chạy với mô hình tốt nhất (LightGBM); thứ hạng nhóm có thể khác với Logistic Regression.
   - Mô hình dùng nhãn mà OFF tính tự động, một phần nhãn có thể trộn công thức 2017 và 2023 (xem Rủi ro đã biết).
 
+## Bộ notebook giải thích mã (05/11/2026, đã thay thế)
+- Bộ `notebooks/giai_thich/` và `docs/code_findings.md` (giải thích mã cũ, gọi hàm trong `src/`) đã bị **thay thế** bởi 5 notebook theo quy trình 9 bước của giảng viên, có mã viết thẳng trong notebook (xem mục "Rút gọn mã theo quy trình 9 bước" bên dưới). Hai lỗi thật mà bộ cũ phát hiện vẫn đúng: tệp mô hình lưu lớp dưới tên `__main__.NutriModel` (nay mô hình là sklearn `Pipeline`, không còn lớp tự viết); lời giải thích sai về con số 50,5% (đã sửa ở mọi tài liệu).
+
 ## Rủi ro đã biết
+- **Mã vạch lặp trong bản dump (đã sửa trong mã 05/11/2026, chưa chạy lại mẫu).** `food.parquet` có vài mã xuất hiện nhiều dòng. Pha 2 của `fetch_from_dump.py` cũ đọc **mọi** dòng của mã đã chọn mà không kiểm tra lại điều kiện, nên có thể lấy phải phiên bản cũ không có nhãn. Trong mẫu đang dùng (tệp 17:41, đã nạp PostgreSQL) dính 3 mã: `8437006177665` và `6703501220017` lấy bản cũ **không có nhãn** (chính là 2 dòng "nhãn không phải A-E" bị loại ở bước làm sạch), `7071688002962` lấy bản cũ có thẻ thành phần chưa dịch. Bản mới thêm điều kiện đủ và `QUALIFY row_number() OVER (PARTITION BY code ORDER BY last_modified_t DESC) = 1` (giữ bản mới nhất đủ điều kiện); chạy thử ra **đúng 30.000 mã và đúng thứ tự** như mẫu cũ, chỉ khác nội dung 3 mã trên. **Không chạy lại** để nạp dữ liệu mới, vì làm vậy đổi tập chia và phá khóa tập test. Ảnh hưởng 3/30.000 dòng; ghi là hạn chế.
 - Bản dump không có `pnns_groups_*`; dùng `food_groups_tags` thay thế (cấp 1 và cấp 2).
 - Quốc gia lệch mạnh; cần báo cáo hiệu năng theo quốc gia.
 - Nhãn có thể trộn hai phiên bản công thức Nutri-Score; mức trộn nhỏ (chỉ 0,1% thực phẩm chỉ khớp bản 2017),
   nhưng 94% khớp cả hai bảng nên không xác định được chắc chắn phiên bản của từng dòng.
 - Sản phẩm Mỹ không mang nhãn Nutri-Score thật trên bao bì; hạng là do Open Food Facts tự tính.
+
+## Rút gọn mã theo quy trình 9 bước của giảng viên (05/11/2026)
+
+**Lý do.** Cô gửi `docs/Quy trình dự án DS.docx` và dặn: code + tài liệu bằng Jupyter notebook chạy sẵn, có kết quả; làm
+theo đúng 9 bước (thu thập bằng SQL trước khi sang Python); phải "control được code" vì hội đồng có thể yêu cầu giải thích
+hoặc xóa đi code lại. Mã cũ (3.719 dòng Python trong 9 tệp, 2.859 dòng test, báo cáo `.md/.json` tự sinh) quá lớn để làm
+điều đó. Người dùng yêu cầu sửa lại toàn bộ `src/`, notebook, tài liệu; `fetch_from_dump.py` (người dùng chỉ sửa để luyện
+tập) được viết lại.
+
+**Quyết định.**
+- Sản phẩm chính là 5 notebook: `01_bai_toan` (bước 1-3), `02_thu_thap_du_lieu` (4), `03_eda` (5), `04_chuan_bi_du_lieu` (6),
+  `05_mo_hinh` (7 và 8 trên dev). Đánh giá cuối trên test (notebook 06) và dashboard (bước 9) chưa làm.
+- `src/` chỉ giữ hàm dùng lại (717 dòng): `db.py`, `fetch_from_dump.py`, `load_raw_to_postgres.py`, `cleaning.py`,
+  `features.py`, `modeling.py`. Bỏ toàn bộ dòng lệnh và báo cáo tự sinh (trừ hai tệp lấy/nạp dữ liệu).
+- **Kiểm toán thô bằng SQL** (`sql/audit_queries.sql`, 11 câu, có JOIN, GROUP BY, FILTER, hàm cửa sổ) thay `raw_audit.py`:
+  ra đúng mọi con số của báo cáo kiểm toán cũ (29.998 dùng được, NOVA 90,3%, thẻ `en:` 94,8%, thương hiệu lớn nhất 1,0%,
+  không trường cá nhân, 10.963 mã bắt đầu bằng 0).
+- **Làm phẳng bằng SQL** (`sql/extract_products.sql`) thay `staging.py`: giống hệt bản Python cũ ở cả 30.000 dòng và mọi cột
+  (6 giây). Cả đặc trưng, nhãn và dinh dưỡng nằm trong một bảng `products.parquet`; `cleaning.clean` tách X và y.
+- **Làm sạch** viết lại 201 dòng: cho ra `clean_features` giống hệt bản cũ (29.904 × 27, mọi giá trị) nên tập chia đã khóa
+  dùng nguyên được. Bỏ phần chẩn đoán công thức 2017/2023 (kết luận vẫn ở mục Quyết định).
+- **Đặc trưng** 110 dòng: `CountVectorizer(binary=True, min_df=100)` thay `TagVectorizer`; NOVA và `pnns_groups_1/2` one-hot
+  có `missing`; bỏ cột `n_rare`, đếm phụ gia theo nhóm số E, số dị ứng, độ dài chữ, số tỷ lệ %, cờ đồ uống/phô mai/hữu cơ/
+  chất béo, bộ bổ sung `pnns_groups_1` từ danh mục, nhóm `flags`, mẫu phủ định (`en:no-added-sugar`). 908 đặc trưng
+  (bản cũ 1.163). Đo trước khi chốt: không làm giảm Macro-F1.
+- **Mô hình**: sklearn `Pipeline(features, model)` thay lớp `NutriModel` (lưu/nạp bằng joblib không còn lỗi `__main__`).
+  Thêm Random Forest (quy trình của cô có liệt kê); bỏ dừng sớm trên tập con và hồi quy thứ tự + tối ưu ngưỡng; LightGBM
+  dùng `n_estimators` là tham số tinh chỉnh; Optuna 30 lần thử (TPE seed 42, MedianPruner), ma trận đặc trưng từng fold
+  tính một lần trong notebook. Chỉ số thêm precision, recall, ROC-AUC; bỏ weighted-F1, MAE.
+- **Tập test vẫn khóa**: `make_split` mới tạo lại tập chia giống hệt `split.parquet` (vân tay `2e511eab89b680b7`);
+  notebook chỉ đọc, không ghi đè. `select_test(final=True)` chưa được gọi.
+- Test viết lại 657 dòng, 109 test (rò rỉ, khóa test, đánh giá chéo không học fold đo, lấy mẫu trên Parquet nhỏ có mã lặp,
+  SQL chỉ đọc, notebook đã chạy và không chứa `final=True`/`.env`/mật khẩu).
+- Tài liệu: `docs/code_findings.md`, `notebooks/giai_thich/`, `notebooks/00_raw_audit.ipynb`, `01_eda.ipynb` và các báo cáo
+  `reports/*.md/.json` cũ đã xóa (còn trong lịch sử Git). `docs/Giai_thich_ma_nguon.md`, `eda_findings.md`,
+  `data_dictionary.md`, `problem_statement.md`, README và hai báo cáo Word viết lại theo mã mới.
+
+**Kết quả (5 fold dev, notebook 05, chạy 45 phút).**
+
+| Mô hình | Macro-F1 | QWK | Accuracy |
+|---|---|---|---|
+| Đường cơ sở `pnns_groups_2` | 0,412 | 0,463 | 0,462 |
+| Logistic Regression (C = 0,1) | 0,562 | 0,711 | 0,579 |
+| Decision Tree (sâu 16) | 0,516 | 0,641 | 0,530 |
+| Random Forest (300 cây) | 0,606 | 0,740 | 0,624 |
+| LightGBM mặc định | 0,599 | 0,742 | 0,617 |
+| **LightGBM Optuna** | **0,625 ± 0,007** | **0,768** | **0,643** |
+
+- Bằng bản cũ về Macro-F1 (0,625) và cao hơn về QWK (0,762 → 0,768): phần mã bỏ đi không đóng góp vào điểm.
+- Ablation: danh mục −0,058, thành phần −0,032, vị trí −0,006, các nhóm khác ≤ 0,003; chỉ thành phần 0,557, thêm NOVA 0,559
+  (NOVA hầu như không bổ sung vì được tính từ chính thành phần).
+- Giữ lại Pháp: 0,596 (so với 0,650 khi có hàng Pháp trong fold huấn luyện). Nhóm khó nhất: composite foods 0,421, thiếu
+  nhóm 0,507; dễ nhất: đồ uống 0,666.
+- Hạn chế mới: lưới độ sâu cây và `min_child_samples` của Optuna chạm cạnh (16 và 3); chênh giữa 5 lần thử tốt nhất chỉ
+  0,002 nên mở rộng không đáng kể.
+

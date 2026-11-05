@@ -1,286 +1,122 @@
-"""Lấy dữ liệu từ bản dump Parquet chính thức của Open Food Facts (thay cho Search API).
+"""Bước 4a - Lấy mẫu từ bản dump Parquet của Open Food Facts bằng SQL (DuckDB).
 
-Bản dump: https://huggingface.co/datasets/openfoodfacts/product-database (tệp food.parquet, khoảng 8 GB).
-Công cụ dùng DuckDB để đọc CHỈ các cột cần thiết, lọc sản phẩm đủ điều kiện cho Phương án A
-(nhãn A-E hợp lệ + có ingredients_tags), lấy mẫu có thể tái lập (seed), rồi ghi ra
-data/raw/raw_products_dump_<thời điểm>.jsonl.gz cùng định dạng với crawler, nên các bước sau
-(load_raw_to_postgres, raw_audit, staging) chạy được mà không phải sửa.
+Nguồn: https://huggingface.co/datasets/openfoodfacts/product-database (food.parquet, khoảng 8 GB, đặt ở data/external/).
+DuckDB đọc thẳng tệp Parquet bằng SQL, chỉ đọc các cột cần, nên không phải nạp 8 GB vào RAM.
+Kết quả: data/raw/raw_products_dump_<thời điểm>.jsonl.gz (mỗi dòng: _metadata + raw_payload), sau đó nạp vào
+PostgreSQL bằng src.load_raw_to_postgres.
 
-Không bao giờ đọc các cột cá nhân (creator, editors, last_editor, ...).
-
-Ví dụ (chạy từ thư mục gốc dự án):
-    python -m src.fetch_from_dump --describe                      # xem cột có trong tệp
-    python -m src.fetch_from_dump --n 30000                       # mẫu ngẫu nhiên tự nhiên 30.000 sản phẩm
-    python -m src.fetch_from_dump --strategy stratified --per-grade 6000
-    python -m src.fetch_from_dump --source remote --n 30000       # đọc thẳng từ Hugging Face (không tải trước)
+Chạy từ thư mục gốc dự án:
+    python -m src.fetch_from_dump --n 30000 --seed 42
 """
 import argparse
 import gzip
 import json
 import os
 import sys
-import time
 from datetime import datetime, timezone
 
 import duckdb
 
-from src.raw_audit import PII_FIELDS, VALID_GRADES
+SOURCE = "data/external/food.parquet"
+# Chỉ đọc các cột cần. KHÔNG có trường cá nhân (creator, editors, last_editor...).
+COLUMNS = ["code", "product_name", "brands_tags", "countries_tags", "categories_tags", "food_groups_tags",
+           "ingredients_tags", "ingredients_text", "ingredients_n", "ingredients_from_palm_oil_n",
+           "ingredients_analysis_tags", "additives_tags", "additives_n", "allergens_tags", "labels_tags",
+           "nova_group", "nutriscore_grade", "nutriscore_score", "nutriments", "lang", "last_modified_t"]
+# Sản phẩm đủ điều kiện: có nhãn A-E, có danh sách thành phần, có mã vạch, chưa bị đánh dấu lỗi thời.
+ELIGIBLE = ("lower(nutriscore_grade) IN ('a', 'b', 'c', 'd', 'e') AND len(ingredients_tags) > 0 "
+            "AND code IS NOT NULL AND coalesce(obsolete, false) = false")
 
-DEFAULT_SOURCE = "data/external/food.parquet"
-REMOTE_SOURCE = "hf://datasets/openfoodfacts/product-database/food.parquet"
-DOWNLOAD_URL = "https://huggingface.co/datasets/openfoodfacts/product-database/resolve/main/food.parquet?download=true"
+# Pha 1: chọn ngẫu nhiên n mã vạch. Sắp theo md5(mã || seed) = trộn ngẫu nhiên nhưng tái lập được.
+PICK_SQL = """
+CREATE OR REPLACE TEMP TABLE picked AS
+SELECT code FROM (SELECT DISTINCT code FROM read_parquet('{src}') WHERE {eligible})
+ORDER BY md5(code || ?) LIMIT ?
+"""
+# Pha 2: đọc đủ cột cho các mã đã chọn. Bản dump có mã lặp: giữ bản sửa gần nhất (last_modified_t lớn nhất).
+ROWS_SQL = """
+SELECT {columns} FROM read_parquet('{src}')
+WHERE code IN (SELECT code FROM picked) AND {eligible}
+QUALIFY row_number() OVER (PARTITION BY code ORDER BY last_modified_t DESC NULLS LAST) = 1
+ORDER BY md5(code || ?)
+"""
 
-REQUIRED_COLUMNS = ("code", "nutriscore_grade", "ingredients_tags")
-SELECT_COLUMNS = (
-    "code", "product_name", "brands_tags", "countries_tags", "categories_tags", "food_groups_tags",
-    "ingredients_tags", "ingredients_text", "ingredients_n", "ingredients_from_palm_oil_n",
-    "ingredients_analysis_tags", "additives_tags", "additives_n", "allergens_tags", "labels_tags",
-    "nova_group", "nutriscore_grade", "nutriscore_score", "nutriments", "lang", "last_modified_t",
-)
-# Chốt chặn: danh sách cột đọc vào không được giao với trường cá nhân
-assert not set(SELECT_COLUMNS) & (set(PII_FIELDS) | {"editors", "photographers", "last_modified_by", "owner"})
 
-
-# ======================================================================================
-# Chuyển đổi một dòng Parquet sang payload giống API
-# ======================================================================================
-def pick_text(entries, prefer_lang=None):
-    """product_name / ingredients_text trong Parquet là list {lang, text}. Ưu tiên main -> lang sản phẩm -> en."""
-    if isinstance(entries, str):
-        return entries.strip() or None
-    if not isinstance(entries, list):
-        return None
-    by_lang = {}
-    for e in entries:
+def pick_text(entries, lang=None):
+    """product_name / ingredients_text trong Parquet là list {lang, text}: ưu tiên 'main', rồi ngôn ngữ sản phẩm, rồi 'en'."""
+    texts = {}
+    for e in entries or []:
         if isinstance(e, dict) and isinstance(e.get("text"), str) and e["text"].strip():
-            by_lang.setdefault(e.get("lang"), e["text"].strip())
-    for key in ("main", prefer_lang, "en"):
-        if key in by_lang:
-            return by_lang[key]
-    return next(iter(by_lang.values()), None)
+            texts.setdefault(e.get("lang"), e["text"].strip())   # mỗi ngôn ngữ giữ bản đầu tiên
+    for key in ("main", lang, "en"):
+        if key in texts:
+            return texts[key]
+    return next(iter(texts.values()), None)
 
 
 def nutriments_to_dict(entries):
-    """nutriments trong Parquet là list {name, 100g, ...}; đổi về dict {"<name>_100g": giá trị} như API."""
-    if isinstance(entries, dict):
-        return entries
-    out = {}
-    for e in entries or []:
-        if isinstance(e, dict) and e.get("name") and e.get("100g") is not None:
-            out[f"{e['name']}_100g"] = e["100g"]
-    return out
+    """nutriments trong Parquet là list {name, 100g, ...}; đổi về dict {"<name>_100g": giá trị} như API của OFF."""
+    return {f"{e['name']}_100g": e["100g"] for e in entries or [] if e.get("name") and e.get("100g") is not None}
 
 
 def food_group_label(tag):
-    """'en:sugary-snacks' -> 'sugary snacks' (dùng thay cho pnns_groups vốn không có trong Parquet)."""
+    """'en:sugary-snacks' -> 'sugary snacks' (thay cho pnns_groups vốn không có trong Parquet)."""
     if not isinstance(tag, str) or not tag.strip():
         return None
-    t = tag.split(":", 1)[-1]
-    return t.replace("-", " ").strip() or None
+    return tag.split(":", 1)[-1].replace("-", " ").strip() or None
 
 
 def row_to_payload(row):
+    """Một dòng Parquet -> payload JSON cùng dạng với API của Open Food Facts."""
     p = {k: v for k, v in row.items() if k not in ("product_name", "ingredients_text", "nutriments")}
-    lang = row.get("lang")
-    p["product_name"] = pick_text(row.get("product_name"), lang)
-    p["ingredients_text"] = pick_text(row.get("ingredients_text"), lang)
+    p["code"] = str(row["code"])
+    p["product_name"] = pick_text(row.get("product_name"), row.get("lang"))
+    p["ingredients_text"] = pick_text(row.get("ingredients_text"), row.get("lang"))
     p["nutriments"] = nutriments_to_dict(row.get("nutriments"))
     groups = row.get("food_groups_tags") or []
     p["pnns_groups_1"] = food_group_label(groups[0]) if len(groups) > 0 else None
     p["pnns_groups_2"] = food_group_label(groups[1]) if len(groups) > 1 else None
-    if p.get("code") is not None:
-        p["code"] = str(p["code"])
     return p
 
 
-# ======================================================================================
-# Truy vấn DuckDB
-# ======================================================================================
-def resolve_source(source):
-    return REMOTE_SOURCE if source == "remote" else source
-
-
-def connect(source):
+def fetch(source, out_path, n=30000, seed="42", batch_size=2000):
+    """Chạy hai pha SQL và ghi tệp .jsonl.gz. Trả về số bản ghi đã ghi."""
+    src = source.replace("'", "''")
     con = duckdb.connect()
-    if source.startswith(("hf://", "http://", "https://")):
-        con.execute("INSTALL httpfs")
-        con.execute("LOAD httpfs")
-    return con
-
-
-def _sql_literal(text):
-    return "'" + str(text).replace("'", "''") + "'"
-
-
-def describe(con, source):
-    rows = con.execute(f"DESCRIBE SELECT * FROM read_parquet({_sql_literal(source)})").fetchall()
-    return {r[0]: r[1] for r in rows}
-
-
-def plan_columns(available):
-    missing_required = [c for c in REQUIRED_COLUMNS if c not in available]
-    if missing_required:
-        raise ValueError(f"Tệp Parquet thiếu cột bắt buộc: {missing_required}")
-    selected = [c for c in SELECT_COLUMNS if c in available]
-    missing_optional = [c for c in SELECT_COLUMNS if c not in available]
-    return selected, missing_optional
-
-
-def build_where(available, country=None):
-    where = [
-        "lower(nutriscore_grade) IN ('a', 'b', 'c', 'd', 'e')",
-        "ingredients_tags IS NOT NULL",
-        "len(ingredients_tags) > 0",
-        "code IS NOT NULL",
-    ]
-    params = []
-    if "obsolete" in available:
-        where.append("coalesce(obsolete, false) = false")
-    if country:
-        if "countries_tags" not in available:
-            raise ValueError("Không lọc được theo quốc gia: tệp không có cột countries_tags")
-        where.append("list_contains(countries_tags, ?)")
-        params.append(country)
-    return " AND ".join(where), params
-
-
-def select_codes(con, source, available, n=30000, strategy="natural", per_grade=None,
-                 country=None, seed="42"):
-    """Pha 1: chỉ đọc vài cột nhỏ để chọn mã vạch. Trả về (số đủ điều kiện theo hạng, số được chọn)."""
-    where, params = build_where(available, country)
-    src = _sql_literal(source)
-    con.execute(f"""
-        CREATE OR REPLACE TEMP TABLE eligible AS
-        SELECT code, lower(nutriscore_grade) AS grade, md5(CAST(code AS VARCHAR) || ?) AS k
-        FROM read_parquet({src})
-        WHERE {where}
-        QUALIFY row_number() OVER (PARTITION BY code ORDER BY k) = 1
-    """, [str(seed)] + params)
-    eligible = dict(con.execute("SELECT grade, count(*) FROM eligible GROUP BY grade").fetchall())
-
-    if strategy == "natural":
-        con.execute("CREATE OR REPLACE TEMP TABLE picked AS SELECT code FROM eligible ORDER BY k LIMIT ?", [int(n)])
-    elif strategy == "stratified":
-        cap = int(per_grade) if per_grade else max(1, int(n) // len(VALID_GRADES))
-        con.execute("""
-            CREATE OR REPLACE TEMP TABLE picked AS
-            SELECT code FROM eligible
-            QUALIFY row_number() OVER (PARTITION BY grade ORDER BY k) <= ?
-        """, [cap])
-    else:
-        raise ValueError("strategy phải là 'natural' hoặc 'stratified'")
-    picked = con.execute("SELECT count(*) FROM picked").fetchone()[0]
-    return {g: int(eligible.get(g, 0)) for g in VALID_GRADES}, int(picked)
-
-
-def iter_selected_rows(con, source, columns, batch_size=2000, seed="42"):
-    """Pha 2: đọc đủ cột cho các mã đã chọn, theo thứ tự cố định, không trùng mã."""
-    cols = ", ".join(f'p."{c}"' for c in columns)
-    cur = con.execute(f"""
-        SELECT {cols}
-        FROM read_parquet({_sql_literal(source)}) AS p
-        SEMI JOIN picked USING (code)
-        ORDER BY md5(CAST(p.code AS VARCHAR) || ?)
-    """, [str(seed)])
-    names = [d[0] for d in cur.description]
-    seen = set()
-    while True:
-        batch = cur.fetchmany(batch_size)
-        if not batch:
-            break
-        for values in batch:
-            row = dict(zip(names, values))
-            code = str(row.get("code"))
-            if code in seen:
-                continue
-            seen.add(code)
-            yield row
-
-
-def extract(source, out_path, n=30000, strategy="natural", per_grade=None, country=None,
-            seed="42", log=print):
-    """Chạy cả hai pha và ghi tệp .jsonl.gz. Trả về dict tóm tắt."""
-    source = resolve_source(source)
-    con = connect(source)
     try:
-        available = describe(con, source)
-        columns, missing = plan_columns(available)
-        if missing:
-            log(f"Cảnh báo: tệp không có các cột tùy chọn {missing} (sẽ để trống)")
-        t0 = time.time()
-        eligible, picked = select_codes(con, source, available, n, strategy, per_grade, country, seed)
-        log(f"Đủ điều kiện theo hạng: {eligible} | chọn {picked} ({time.time() - t0:.0f}s)")
-
-        filters = {"strategy": strategy, "n": n, "per_grade": per_grade, "country": country, "seed": str(seed)}
-        retrieved_at = datetime.now(timezone.utc).isoformat()
+        con.execute(PICK_SQL.format(src=src, eligible=ELIGIBLE), [str(seed), int(n)])
+        cur = con.execute(ROWS_SQL.format(columns=", ".join(COLUMNS), src=src, eligible=ELIGIBLE), [str(seed)])
+        meta = {"retrieved_at": datetime.now(timezone.utc).isoformat(), "source_endpoint": source,
+                "request_url": None, "http_status": None, "page": None, "filters": {"n": n, "seed": str(seed)}}
         written = 0
-        folder = os.path.dirname(out_path)
-        if folder:
-            os.makedirs(folder, exist_ok=True)
+        os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
         with gzip.open(out_path, "wt", encoding="utf-8") as gz:
-            for row in iter_selected_rows(con, source, columns, seed=seed):
-                record = {
-                    "_metadata": {
-                        "retrieved_at": retrieved_at,
-                        "source_endpoint": source,
-                        "request_url": None,
-                        "http_status": None,
-                        "page": None,
-                        "filters": filters,
-                    },
-                    "raw_payload": row_to_payload(row),
-                }
-                gz.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")
-                written += 1
-        log(f"Đã ghi {written} bản ghi vào {out_path} ({time.time() - t0:.0f}s)")
-        return {"eligible": eligible, "picked": picked, "written": written, "missing_optional": missing}
+            while batch := cur.fetchmany(batch_size):
+                for values in batch:
+                    record = {"_metadata": meta, "raw_payload": row_to_payload(dict(zip(COLUMNS, values)))}
+                    gz.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")
+                    written += 1
+        return written
     finally:
         con.close()
 
 
-# ======================================================================================
-# Dòng lệnh
-# ======================================================================================
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="Lấy mẫu từ bản dump Parquet của Open Food Facts")
-    ap.add_argument("--source", default=DEFAULT_SOURCE,
-                    help=f"đường dẫn food.parquet, hoặc 'remote' để đọc thẳng {REMOTE_SOURCE}")
-    ap.add_argument("--n", type=int, default=30000, help="số sản phẩm (strategy natural)")
-    ap.add_argument("--strategy", choices=["natural", "stratified"], default="natural")
-    ap.add_argument("--per-grade", type=int, default=None, help="số sản phẩm mỗi hạng (strategy stratified)")
-    ap.add_argument("--country", default=None, help="ví dụ en:france (có tiền tố en:)")
+    ap = argparse.ArgumentParser(description="Lấy mẫu ngẫu nhiên từ bản dump Parquet của Open Food Facts")
+    ap.add_argument("--source", default=SOURCE)
+    ap.add_argument("--n", type=int, default=30000)
     ap.add_argument("--seed", default="42")
     ap.add_argument("--out-dir", default="data/raw")
-    ap.add_argument("--describe", action="store_true", help="chỉ in danh sách cột rồi thoát")
     args = ap.parse_args(argv)
 
-    try:
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-    except (AttributeError, ValueError):
-        pass
-
-    source = resolve_source(args.source)
-    if not source.startswith(("hf://", "http://", "https://")) and not os.path.exists(source):
-        print(f"Không thấy tệp {source}. Tải về từ:\n  {DOWNLOAD_URL}\n"
-              f"và đặt vào {DEFAULT_SOURCE}, hoặc dùng --source remote.")
+    if not os.path.exists(args.source):
+        print(f"Không thấy {args.source}. Tải food.parquet từ Hugging Face (openfoodfacts/product-database).")
         return 1
-
-    if args.describe:
-        con = connect(source)
-        try:
-            available = describe(con, source)
-        finally:
-            con.close()
-        for name, typ in available.items():
-            print(f"{name}: {typ}")
-        _, missing = plan_columns(available)
-        print(f"\nTổng {len(available)} cột. Cột cần mà không có: {missing or 'không'}")
-        return 0
-
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     out_path = os.path.join(args.out_dir, f"raw_products_dump_{stamp}.jsonl.gz")
-    summary = extract(source, out_path, args.n, args.strategy, args.per_grade, args.country, args.seed)
-    return 0 if summary["written"] > 0 else 1
+    written = fetch(args.source, out_path, args.n, args.seed)
+    print(f"Đã ghi {written} sản phẩm vào {out_path}")
+    return 0 if written else 1
 
 
 if __name__ == "__main__":

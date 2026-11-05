@@ -1,211 +1,138 @@
-# Từ điển dữ liệu staging
+# Từ điển dữ liệu
 
-Tạo bởi `python -m src.staging`. Staging không lọc dòng; mỗi bản ghi thô cho đúng một dòng ở mỗi bảng.
-Hai bảng ghép với nhau qua `row_id`.
+Luồng dữ liệu và nơi tạo ra từng bảng:
 
-## `data/processed/staging_features.parquet` (đặc trưng hợp lệ cho Phương án A)
+| Bảng / tệp | Tạo bởi | Vào Git? |
+|---|---|---|
+| `data/raw/raw_products_dump_<thời điểm>.jsonl.gz` | `python -m src.fetch_from_dump` (SQL DuckDB trên `food.parquet`) | không |
+| PostgreSQL `raw_products` (raw layer) | `sql/init_raw_db.sql` + `python -m src.load_raw_to_postgres <tệp>` | không |
+| `data/processed/products.parquet` | notebook 02, câu SQL `sql/extract_products.sql` | không |
+| `data/final/clean_features.parquet`, `clean_labels.parquet` | notebook 04, `src.cleaning.clean` | không |
+| `data/final/split.parquet` | Bước 7 (`src.modeling.make_split`), **đã khóa**, notebook 04 chỉ đọc và đối chiếu | không |
+| `artifacts/best_model.joblib`, `data/processed/oof_predictions.parquet`, `reports/model_results.json` | notebook 05 | chỉ `reports/model_results.json` |
 
-| Cột | Kiểu | Nguồn trong JSON thô | Quy tắc |
+---
+
+## 1. `raw_products` (PostgreSQL, raw layer)
+
+| Cột | Kiểu | Ý nghĩa |
+|---|---|---|
+| `id` | BIGSERIAL | khóa chính, thứ tự nạp |
+| `code` | TEXT | mã vạch (chuỗi, giữ số 0 đầu) |
+| `retrieved_at` | TIMESTAMPTZ | thời điểm lấy dữ liệu |
+| `source_endpoint` | TEXT | nguồn (đường dẫn `food.parquet`) |
+| `request_url`, `http_status`, `page` | TEXT, INT, INT | để trống với bản dump (giữ từ thời dùng API) |
+| `source_file` | TEXT | tên tệp `.jsonl.gz`; `UNIQUE (code, source_file)` chống nạp trùng |
+| `payload` | JSONB | JSON gốc của sản phẩm, không sửa |
+
+`payload` chỉ chứa các trường trong `src.fetch_from_dump.COLUMNS` (không có trường cá nhân), cộng `pnns_groups_1/2`
+suy ra từ `food_groups_tags`.
+
+## 2. `data/processed/products.parquet` (bảng phẳng từ SQL, chưa lọc)
+
+Tạo bằng `sql/extract_products.sql`. Một dòng cho mỗi bản ghi của `raw_products`, sắp theo `id`.
+
+| Cột | Kiểu | Lấy từ `payload` | Quy tắc trong SQL |
 |---|---|---|---|
-| `row_id` | int | thứ tự đọc | khóa ghép với staging_audit |
-| `code` | string | `code` | luôn là chuỗi, giữ số 0 đầu |
-| `product_name` | string | `product_name` | strip; rỗng thành thiếu |
-| `brand` | string | `brands_tags[0]` | thương hiệu đầu tiên; dùng làm nhóm khi chia GroupKFold |
-| `brands_tags` | list[string] | `brands_tags` | |
-| `countries_tags` | list[string] | `countries_tags` | |
-| `categories_tags` | list[string] | `categories_tags` | |
-| `pnns_groups_1` | string | `pnns_groups_1` | chữ thường; `unknown` thành thiếu |
-| `pnns_groups_2` | string | `pnns_groups_2` | như trên |
-| `ingredients_tags` | list[string] | `ingredients_tags` | thiếu giữ là null, rỗng giữ là [] |
-| `ingredients_text` | string | `ingredients_text` | |
-| `ingredients_n` | Int64 | `ingredients_n` | |
-| `ingredients_from_palm_oil_n` | Int64 | `ingredients_from_palm_oil_n` | |
-| `ingredients_analysis_tags` | list[string] | `ingredients_analysis_tags` | |
-| `additives_tags` | list[string] | `additives_tags` | |
-| `additives_n` | Int64 | `additives_n` | |
-| `allergens_tags` | list[string] | `allergens_tags` | |
-| `labels_tags` | list[string] | `labels_tags` | |
-| `nova_group` | Int64 | `nova_group` | chỉ giữ 1-4, ngoài khoảng thành thiếu |
-| `lang` | string | `lang` | |
-| `last_modified` | datetime (UTC) | `last_modified_t` | giây kể từ 1970 đổi sang datetime |
+| `row_id` | int | — | `row_number() OVER (ORDER BY id) - 1` |
+| `code` | string | `code` | `NULLIF(trim(...), '')` |
+| `product_name` | string | `product_name` | như trên |
+| `brands_tags`, `countries_tags`, `categories_tags`, `ingredients_tags`, `ingredients_analysis_tags`, `additives_tags`, `allergens_tags`, `labels_tags` | list[string] | cùng tên | chỉ nhận mảng JSON, sai kiểu thành NULL |
+| `pnns_groups_1`, `pnns_groups_2` | string | cùng tên | chữ thường; `unknown` thành NULL |
+| `ingredients_text` | string | cùng tên | `NULLIF(trim(...), '')` |
+| `ingredients_n`, `ingredients_from_palm_oil_n`, `additives_n` | float | cùng tên | chỉ nhận giá trị dạng số |
+| `nova_group` | int | `nova_group` | chỉ nhận 1-4 |
+| `lang` | string | `lang` | chữ thường |
+| `last_modified` | timestamp | `last_modified_t` | `to_timestamp(...)` |
+| `nutriscore_grade` | string | `nutriscore_grade` | chỉ a-e (nhãn y) |
+| `nutriscore_score`, `energy_kcal_100g`, `fat_100g`, `saturated_fat_100g`, `sugars_100g`, `fiber_100g`, `proteins_100g`, `salt_100g` | float | `nutriscore_score`, `nutriments` | **chỉ cho EDA**, cấm làm đặc trưng |
 
-Bảng này KHÔNG chứa: nhãn Nutri-Score, `nutriments`, `nutrient_levels*`, `misc_tags`, `states_tags`,
-`data_quality_tags`, và mọi trường cá nhân (`creator`, `editors_tags`, `last_editor`...).
-Hàm `assert_features_are_clean` chặn việc ghi bảng nếu có cột bị cấm.
+## 3. `data/final/clean_features.parquet` (X, 29.904 × 27, KHÔNG có nhãn)
 
-## `data/processed/staging_audit.parquet` (chỉ để kiểm tra nhãn và EDA)
-
-| Cột | Kiểu | Quy tắc |
+| Cột | Kiểu | Quy tắc làm sạch (`src/cleaning.py`) |
 |---|---|---|
-| `row_id` | int | khóa ghép với staging_features |
-| `code` | string | |
-| `nutriscore_grade` | string | chuẩn hóa chữ thường, chỉ a-e; giá trị khác thành thiếu |
-| `nutriscore_grade_raw` | string | giá trị gốc trước khi chuẩn hóa |
-| `energy-kcal_100g` | float | từ `nutriments`; giá trị không phải số hữu hạn thành thiếu |
-| `energy-kj_100g` | float | |
-| `fat_100g` | float | |
-| `saturated-fat_100g` | float | |
-| `carbohydrates_100g` | float | |
-| `sugars_100g` | float | |
-| `fiber_100g` | float | |
-| `proteins_100g` | float | |
-| `salt_100g` | float | |
-| `sodium_100g` | float | |
-
-Ngoài ra bảng có thêm mọi cột `nutriscore_*` khác tìm thấy trong dữ liệu (điểm, phiên bản công thức nếu có).
-Staging chưa quy đổi đơn vị và chưa lọc giá trị vô lý: đó là việc của bước cleaning.
-
----
-
-# Từ điển dữ liệu sau làm sạch (Bước 4)
-
-Tạo bởi `python -m src.cleaning`. Ba tệp có cùng `row_id` (lấy từ staging) và cùng thứ tự dòng.
-
-## `data/final/clean_features.parquet` (X: đặc trưng cho mô hình, KHÔNG có nhãn)
-
-Các cột giữ nguyên tên từ staging nhưng đã chuẩn hóa: `row_id`, `code`, `product_name`, `brand`, `brands_tags`,
-`countries_tags`, `categories_tags`, `pnns_groups_1`, `pnns_groups_2`, `ingredients_tags`, `ingredients_text`,
-`ingredients_n`, `ingredients_from_palm_oil_n`, `ingredients_analysis_tags`, `additives_tags`, `additives_n`,
-`allergens_tags`, `labels_tags`, `nova_group`, `lang`, `last_modified`.
-
-| Cột | Kiểu | Quy tắc làm sạch |
-|---|---|---|
-| `brand`, `brands_tags` | string, list | bỏ tiền tố ngôn ngữ (`xx:`), bỏ dấu, chữ thường, ký tự lạ thành `-`: `xx:Carrefour` và `xx:carrefour` đều thành `carrefour` |
-| `product_name` | string | gộp khoảng trắng thừa |
-| `countries_tags` | list[string] | bỏ `en:world` (không phải quốc gia); giữ đủ 162 quốc gia |
-| các cột `*_tags` khác | list[string] | strip, chữ thường, bỏ rỗng, bỏ trùng, giữ thứ tự |
-| `labels_tags` | list[string] | như trên, và bỏ thẻ rò rỉ nhãn (logo Nutri-Score, Health Star Rating, Keyhole, nhãn cảnh báo "exceso"/"alto en"); giữ lời quảng cáo về một chất như `en:low-fat` |
-| `categories_tags` | list[string] | như trên, và bỏ thẻ rò rỉ cùng mẫu với `labels_tags` (vd. thẻ tự gõ `fr:nutri score a`) |
-| `ingredients_n`, `additives_n`, `ingredients_from_palm_oil_n` | Int64 | số âm thành thiếu; `ingredients_n` thiếu thì lấy số thẻ thành phần |
-| `lang` | string | chữ thường |
-| `group_id` | string | nhóm cho GroupKFold: `brand:<thương hiệu>`; nếu thiếu thương hiệu thì `name:<tên chuẩn hóa>`; nếu thiếu cả hai thì `code:<mã vạch>` |
-| `n_countries` | Int64 | số quốc gia sau khi bỏ `en:world` (0 = không rõ) |
-| `share_ingredients_off_taxonomy` | Float64 | tỷ lệ thẻ thành phần không có tiền tố `en:` |
-| `flag_few_ingredients` | bool | `ingredients_n` ≤ 1 (giữ lại vì mật ong, dầu ăn... là hợp lệ) |
-| `flag_missing_nova` | bool | không có `nova_group` hợp lệ |
-| `flag_missing_brand` | bool | không có thương hiệu |
-
-## `data/final/clean_labels.parquet` (y)
-
-| Cột | Kiểu | Quy tắc |
-|---|---|---|
-| `row_id` | int | khóa ghép với clean_features |
-| `code` | string | để đối chiếu |
-| `nutriscore_grade` | string | chỉ a-e |
-
-## `data/processed/clean_audit.parquet`
-
-Các cột của `staging_audit`, chỉ cho những dòng được giữ lại. Chỉ dùng cho EDA và kiểm tra nhãn, không bao giờ làm đặc trưng.
-
-## Các dòng bị loại (thứ tự trong phễu)
-
-1. Nhãn không phải A-E. 2. Không có `ingredients_tags`. 3. Mã vạch thiếu hoặc có ký tự không phải số.
-4. `ingredients_n` > 150 (tham số `--max-ingredients`). 5. Trùng mã vạch: giữ bản có `last_modified` mới nhất.
-6. Trùng nội dung (cùng thương hiệu + tên chuẩn hóa + danh sách thành phần): giữ bản mới nhất.
-
-Không bước nào dựa vào bảng dinh dưỡng hay điểm Nutri-Score.
-
----
-
-# Từ điển đặc trưng (Bước 6)
-
-Tạo bởi `src/features.py`. Không lưu ma trận ra tệp: `build_feature_pipeline` trả về một sklearn Pipeline nhận
-`clean_features.parquet` và trả về ma trận thưa; ở Bước 7-8 pipeline chỉ được fit trên tập huấn luyện của từng fold.
-`python -m src.features` chỉ ghi báo cáo mô tả `reports/features_report.md` và danh sách tên `reports/feature_names.txt`.
-
-Tên đặc trưng có dạng `<nhóm>-<phần>__<tên>`, ví dụ `ingredients__en:sugar`, `categories-pnns__pnns_groups_1_filled_beverages`.
-Nhóm (để bật/tắt khi làm ablation): `numeric`, `position`, `ingredients`, `additives`, `categories`, `nova`, `labels`,
-`countries`, `flags`.
-
-## Cột trung gian do `RowFeatures` tạo (tính từ riêng từng dòng, không học từ dữ liệu)
-
-| Cột | Nhóm | Quy tắc |
-|---|---|---|
-| `n_allergens` | numeric | số thẻ trong `allergens_tags` |
-| `ingredients_text_len` | numeric | số ký tự của `ingredients_text` |
-| `n_ingredients_with_percent` | numeric | số tỷ lệ phần trăm ghi trong chữ thành phần (`70 %`, `12,5%`) |
-| `has_palm_oil` | numeric | 1 nếu `ingredients_from_palm_oil_n` > 0 hoặc có thẻ dầu/mỡ cọ (`en:palm-oil`, `en:palm-kernel-fat`...) |
-| `pos_sugar`, `pos_salt`, `pos_fat` | position | vị trí tương đối của thẻ đầu tiên là đường / muối / chất béo trong `ingredients_tags`: 1 nếu đứng đầu, giảm dần về 0 ở cuối, 0 nếu không có. Nhận diện theo từ trong thẻ `en:` (sugar, syrup, glucose...; salt; oil, fat, butter...), bỏ thẻ phủ định như `en:fat-reduced-cocoa`, `en:no-added-sugar` |
-| `first_ingredient` | position | danh sách chỉ gồm thẻ thành phần đầu tiên (thành phần nhiều nhất theo khối lượng) |
-| `add_colours`, `add_preservatives`, `add_antioxidants_acids`, `add_thickeners_emulsifiers`, `add_acidity_anticaking`, `add_flavour_enhancers`, `add_sweeteners`, `add_other` | additives | số phụ gia theo nhóm số E: 1xx tạo màu, 2xx bảo quản, 3xx chống oxy hóa/axit, 4xx làm dày/nhũ hóa, 5xx điều chỉnh axit/chống đông vón, 6xx điều vị; chất tạo ngọt (E420, E421, E950-E969) tách riêng. `en:e322` và `en:e322i` chỉ tính một lần |
-| `is_beverage`, `is_fat_oil_nut_seed`, `is_cheese` | categories | có `en:beverages` / thuộc nhóm chất béo, dầu, hạt (như Bước 4) / có `en:cheeses` trong `categories_tags` |
-| `pnns_groups_2_filled` | categories | `pnns_groups_2` chữ thường; thiếu thành `missing` |
-| `nova_1`, `nova_2`, `nova_3`, `nova_4`, `nova_missing` | nova | one-hot của `nova_group`; ngoài 1-4 hoặc thiếu thành `nova_missing` = 1. Thay cho `flag_missing_nova` |
-| `is_organic` | labels | có nhãn hữu cơ (`en:organic`, `en:eu-organic`, mã `xx-bio-nn`, `fr:ab-agriculture-biologique`) |
-
-## Cột do `CategoryGroupImputer` tạo (học từ tập huấn luyện)
-
-| Cột | Nhóm | Quy tắc |
-|---|---|---|
-| `pnns_groups_1_filled` | categories | `pnns_groups_1` gốc (gộp `alcoholic beverages` vào `beverages`); nếu thiếu thì lấy nhóm phổ biến nhất của thẻ danh mục thuần nhất mà sản phẩm có (thẻ có ở ≥ 5 sản phẩm đã biết nhóm, nhóm chiếm > 50%); không đủ căn cứ thì `missing` |
-| `pnns_groups_1_imputed` | flags | 1 nếu `pnns_groups_1_filled` là nhóm bổ sung, 0 nếu là nhóm gốc hoặc `missing` |
-
-## Đặc trưng đưa vào mô hình
-
-| Nhóm | Đặc trưng | Biến đổi (fit trên tập huấn luyện) |
-|---|---|---|
-| `numeric` | `ingredients_n`, `additives_n`, `ingredients_from_palm_oil_n`, `n_allergens`, `ingredients_text_len`, `n_ingredients_with_percent`; `has_palm_oil` | điền trung vị -> log(1 + x) -> chuẩn hóa; cờ để nguyên |
-| `position` | `pos_sugar`, `pos_salt`, `pos_fat`; multi-hot `first_ingredient` | để nguyên; thẻ đầu tiên phải có ở ≥ `min_freq` sản phẩm |
-| `ingredients` | multi-hot `ingredients_tags` + `n_rare` | giữ thẻ có ở ≥ `min_freq` sản phẩm; `n_rare` = log(1 + số thẻ không được giữ, kể cả thẻ chưa gặp) |
-| `additives` | multi-hot `additives_tags` + `n_rare`; 8 cột `add_*` | như trên; số đếm theo nhóm: điền trung vị -> log(1 + x) -> chuẩn hóa |
-| `categories` | one-hot `pnns_groups_1_filled`, `pnns_groups_2_filled`; multi-hot `categories_tags` + `n_rare`; `is_beverage`, `is_fat_oil_nut_seed`, `is_cheese` | nhóm chưa gặp lúc fit thành toàn 0 |
-| `nova` | `nova_1` ... `nova_4`, `nova_missing` | để nguyên |
-| `labels` | multi-hot `labels_tags` + `n_rare`; multi-hot `ingredients_analysis_tags` (thuần chay, chay, dầu cọ); `is_organic` | ngưỡng `min_freq` |
-| `countries` | multi-hot `countries_tags` + `n_rare`; `n_countries` | ngưỡng `min_freq`; số quốc gia: log(1 + x) -> chuẩn hóa |
-| `flags` | `flag_few_ingredients`, `flag_missing_brand`, `share_ingredients_off_taxonomy`, `pnns_groups_1_imputed` | để nguyên |
-
-`min_freq` là 100 cho mọi cột danh sách thẻ (đã chốt ở Bước 8; ngưỡng 20 chỉ đo lại để ghi vào báo cáo).
-Cấu hình chính của Bước 8 **không dùng nhóm `flags`** (xem `docs/scope_decision.md`); các cột của nhóm này vẫn được
-tạo để đo so sánh trong `reports/modeling_results.md`.
-Không dùng làm đặc trưng: `row_id`, `code`, `group_id` (chỉ để chia dữ liệu), `brand`, `brands_tags` (thương hiệu là
-nhóm GroupKFold nên thương hiệu ở tập kiểm tra không có trong tập huấn luyện), `product_name`, `lang`, `last_modified`,
-`flag_missing_nova` (trùng `nova_missing`).
-
----
-
-# Tập chia dữ liệu (Bước 7)
-
-Tạo bởi `python -m src.models.evaluate`. Một dòng cho mỗi dòng của `clean_features.parquet`, cùng `row_id` và cùng thứ tự.
-Không chứa nhãn hay đặc trưng. Tệp nằm trong `data/final/` nên không đẩy lên Git; dấu vân tay tập test ghi trong
-`reports/evaluation_setup.md` để đối chiếu.
-
-## `data/final/split.parquet`
-
-| Cột | Kiểu | Quy tắc |
-|---|---|---|
-| `row_id` | int | khóa ghép với clean_features và clean_labels |
-| `code` | string | mã vạch, để đối chiếu và tính dấu vân tay tập test |
-| `group_id` | string | nhóm GroupKFold (lấy từ clean_features) |
-| `split` | string | `dev` (80%) hoặc `test` (20%, khóa đến Bước 9). StratifiedGroupKFold 5 phần theo `group_id`, seed 42, phần đầu tiên là test |
-| `fold` | int | 0-4 cho dòng dev (StratifiedGroupKFold 5 fold trong dev, seed 42); -1 cho dòng test |
-| `country_holdout` | string | vai trò trong bài kiểm tra giữ lại Pháp (chỉ dòng dev): `eval` = bán ở Pháp (`en:france` trong `countries_tags`); `train` = không bán ở Pháp; `excluded` = không bán ở Pháp nhưng cùng `group_id` với một dòng `eval`, nên bị bỏ khỏi phần huấn luyện. Dòng test có giá trị `test` |
-
-Quy tắc được `assert_split_valid` kiểm tra mỗi lần tạo: một `group_id` chỉ nằm ở một trong dev/test, chỉ ở một fold, và
-không nằm ở cả `train` lẫn `eval`. Lệnh dừng (không ghi đè) nếu tập chia mới khác tệp đã lưu, trừ khi có `--overwrite-split`.
-
----
-
-# Kết quả mô hình (Bước 8)
-
-Tạo bởi `python -m src.models.train`. Chỉ dùng dòng dev; tập test vẫn khóa. Hai tệp dưới đây không đẩy lên Git.
-
-## `data/processed/oof_predictions.parquet` (dự đoán ngoài fold của mô hình tốt nhất)
-
-Một dòng cho mỗi dòng dev. Mỗi dự đoán do mô hình **không** được huấn luyện trên fold của dòng đó tạo ra, nên dùng được
-để phân tích lỗi ở Bước 9 mà không lạc quan.
-
-| Cột | Kiểu | Quy tắc |
-|---|---|---|
-| `row_id` | int | khóa ghép với clean_features, clean_labels và split |
+| `row_id` | int | khóa ghép với y và tập chia |
 | `code` | string | mã vạch |
-| `fold` | int | fold (0-4) mà dòng này được dùng để đo |
-| `y_true` | string | hạng thật a-e |
-| `y_pred` | string | hạng dự đoán a-e |
-| `p_a`, `p_b`, `p_c`, `p_d`, `p_e` | float | xác suất từng hạng (tổng = 1). Không có nếu mô hình tốt nhất là hồi quy thứ tự |
+| `group_id` | string | nhóm khi chia dữ liệu: `brand:<thương hiệu>`; thiếu thương hiệu thì `name:<tên chuẩn hóa>`; thiếu cả hai thì `code:<mã>` |
+| `product_name` | string | gộp khoảng trắng thừa |
+| `brand` | string | thương hiệu đầu tiên sau chuẩn hóa |
+| `brands_tags` | list | bỏ tiền tố ngôn ngữ, bỏ dấu, chữ thường: `xx:Carrefour` → `carrefour` |
+| `countries_tags` | list | bỏ `en:world` |
+| `n_countries` | Int64 | số quốc gia sau khi bỏ `en:world` |
+| `categories_tags` | list | chữ thường, bỏ trùng; bỏ thẻ lộ đáp án (vd. `fr:nutri score a`) |
+| `pnns_groups_1`, `pnns_groups_2` | string | như SQL |
+| `ingredients_tags` | list | chữ thường, bỏ trùng, giữ thứ tự (thứ tự = khối lượng giảm dần) |
+| `ingredients_text` | string | như SQL |
+| `ingredients_n` | Int64 | số âm thành thiếu; thiếu thì lấy số thẻ thành phần |
+| `ingredients_from_palm_oil_n`, `additives_n` | Int64 | số âm thành thiếu |
+| `ingredients_analysis_tags`, `additives_tags`, `allergens_tags` | list | chữ thường, bỏ trùng |
+| `labels_tags` | list | như trên, và **bỏ thẻ lộ đáp án** (logo Nutri-Score, Health Star Rating, Keyhole, "exceso", "alto en"...) |
+| `nova_group` | Int64 | 1-4 hoặc thiếu |
+| `lang` | string | chữ thường |
+| `last_modified` | datetime UTC | dùng để giữ bản mới nhất khi trùng mã |
+| `share_ingredients_off_taxonomy` | Float64 | tỷ lệ thẻ thành phần không có tiền tố `en:` |
+| `flag_few_ingredients` | bool | `ingredients_n` ≤ 1 (chỉ gắn cờ, không loại) |
+| `flag_missing_nova` | bool | thiếu NOVA |
+| `flag_missing_brand` | bool | thiếu thương hiệu |
 
-## `artifacts/best_model.joblib`
+Dòng bị loại (theo thứ tự): nhãn không phải A-E (2), không có thành phần (0), mã vạch hỏng (0), > 150 thành phần (19),
+trùng mã vạch (0, giữ bản mới nhất), trùng nội dung thương hiệu + tên + thành phần (75). Không bước nào dựa vào dinh dưỡng.
 
-Từ điển Python lưu bằng `joblib`: `model` (đối tượng `NutriModel` đã fit trên **toàn bộ dev**, gồm pipeline đặc trưng và
-bộ phân loại; `predict` nhận thẳng DataFrame dạng clean_features), `kind`, `params`, `min_freq`, `groups`, `trained_on`,
-`test_fingerprint` (để kiểm tra đúng tập test khi đo ở Bước 9), `n_features`, `cv_mean` (chỉ số 5 fold), `versions`
-(phiên bản Python và thư viện), `created_at`.
+## 4. `data/final/clean_labels.parquet` (y)
+
+| Cột | Kiểu | Quy tắc |
+|---|---|---|
+| `row_id` | int | cùng thứ tự với X |
+| `code` | string | đối chiếu |
+| `nutriscore_grade` | string | a-e |
+
+## 5. `data/final/split.parquet` (tập chia, đã khóa)
+
+| Cột | Kiểu | Quy tắc |
+|---|---|---|
+| `row_id`, `code`, `group_id` | int, string, string | như X |
+| `split` | string | `dev` (80%) / `test` (20%): StratifiedGroupKFold 5 phần theo `group_id`, seed 42, phần đầu là test |
+| `fold` | int | 0-4 trong dev (StratifiedGroupKFold 5 fold, seed 42); -1 ở test |
+| `country_holdout` | string | bài kiểm tra giữ lại Pháp (chỉ dev): `eval` bán ở Pháp; `train` không bán ở Pháp; `excluded` không bán ở Pháp nhưng cùng nhóm với một dòng `eval`; dòng test là `test` |
+
+Dấu vân tay tập test (16 ký tự đầu SHA-256 của các mã vạch test đã sắp xếp): **`2e511eab89b680b7`**.
+
+## 6. Đặc trưng (`src/features.py`, không lưu ra tệp)
+
+Pipeline `make_features()` nằm bên trong mô hình và chỉ fit trên phần huấn luyện. Tên đặc trưng có dạng
+`<phần>__<tên>`, ví dụ `ingredients__en:sugar`, `nova__nova_4`.
+
+| Nhóm | Phần | Cách tạo |
+|---|---|---|
+| `numeric` | `numeric` | `ingredients_n`, `additives_n`, `ingredients_from_palm_oil_n`, `n_countries`: điền trung vị → log(1+x) → StandardScaler |
+| `position` | `position` | `pos_sugar`, `pos_salt`, `pos_fat`: vị trí tương đối của thẻ `en:` đầu tiên chứa từ chỉ đường (sugar, syrup, glucose...), muối (salt), chất béo (oil, fat, butter...); 1 nếu đứng đầu, 0 nếu không có |
+| `position` | `first` | multi-hot thành phần đứng đầu |
+| `ingredients` | `ingredients` | multi-hot `ingredients_tags` |
+| `additives` | `additives` | multi-hot `additives_tags` |
+| `categories` | `pnns` | one-hot `pnns_groups_1`, `pnns_groups_2` (thiếu = `missing`) |
+| `categories` | `categories` | multi-hot `categories_tags` |
+| `nova` | `nova` | one-hot NOVA 1-4 và `missing` |
+| `labels` | `labels`, `analysis` | multi-hot `labels_tags`, `ingredients_analysis_tags` |
+| `countries` | `countries` | multi-hot `countries_tags` |
+
+Multi-hot (`CountVectorizer(binary=True)`) chỉ giữ thẻ có ở ≥ `min_freq` = 100 sản phẩm của tập fit; khoảng 900 đặc trưng.
+Không dùng làm đặc trưng: `row_id`, `code`, `group_id`, `brand`, `brands_tags` (thương hiệu là nhóm chia dữ liệu),
+`product_name`, `lang`, `last_modified`, `allergens_tags`, `ingredients_text`, các cờ chất lượng.
+
+## 7. Kết quả notebook 05
+
+### `artifacts/best_model.joblib`
+dict gồm: `model` (sklearn Pipeline `features` + `model`, đã học trên toàn bộ dev, nhận thẳng DataFrame
+`clean_features`), `name`, `params`, `trained_on`, `cv_dev` (chỉ số trung bình 5 fold), `versions` (phiên bản thư viện).
+
+### `data/processed/oof_predictions.parquet` (dự đoán ngoài fold trên dev)
+
+| Cột | Kiểu | Ý nghĩa |
+|---|---|---|
+| `row_id`, `code` | int, string | khóa |
+| `fold` | int | fold mà dòng này được dự đoán (mô hình dự đoán không học fold này) |
+| `y_true`, `y_pred` | string | hạng thật và hạng dự đoán |
+| `p_a` ... `p_e` | float | xác suất từng hạng |
+
+### `reports/model_results.json`
+Mô hình tốt nhất, tham số Optuna, bảng so sánh (trung bình và độ lệch chuẩn 5 fold của mọi chỉ số), ablation.
