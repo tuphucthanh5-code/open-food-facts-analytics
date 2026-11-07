@@ -3,7 +3,7 @@
 Dự án dùng dữ liệu Open Food Facts để dự đoán hạng Nutri-Score (A–E) cho sản phẩm thiếu bảng dinh dưỡng,
 chỉ dựa trên thành phần, phụ gia, danh mục, nhóm NOVA và quốc gia. Chi tiết: `docs/problem_statement.md`.
 
-**Sản phẩm chính là 6 notebook chạy sẵn, có kết quả**, đi theo quy trình 9 bước của môn học:
+**Sản phẩm chính là 6 notebook chạy sẵn, có kết quả, và một dashboard**, đi theo quy trình 9 bước của môn học:
 
 | Notebook | Bước trong quy trình |
 |---|---|
@@ -13,6 +13,7 @@ chỉ dựa trên thành phần, phụ gia, danh mục, nhóm NOVA và quốc gi
 | `notebooks/04_chuan_bi_du_lieu.ipynb` | 6. Data Preparation: làm sạch, chia train/validation/test, đặc trưng |
 | `notebooks/05_mo_hinh.ipynb` | 7. Modeling, 8. Evaluation trên tập dev (so sánh và chốt mô hình) |
 | `notebooks/06_danh_gia.ipynb` | 8. Evaluation cuối: mở tập test một lần, khoảng tin cậy, phân tích lỗi, giải thích mô hình |
+| `dashboard/app.py` (Streamlit) | 9. Deployment: nhập sản phẩm, xem hạng dự đoán, xác suất, giải thích và sản phẩm thay thế |
 
 ## Kết quả chính (tập test 20%, 5.982 sản phẩm, thương hiệu không có trong dữ liệu học)
 
@@ -37,7 +38,10 @@ chỉ dựa trên thành phần, phụ gia, danh mục, nhóm NOVA và quốc gi
 │   ├── db.py                  # kết nối PostgreSQL (.env), chạy câu SQL -> DataFrame
 │   ├── cleaning.py            # Bước 6: chuẩn hóa, lọc, loại trùng, chống rò rỉ nhãn, group_id
 │   ├── features.py            # Bước 6: sklearn Pipeline đặc trưng
-│   └── modeling.py            # Bước 6-8: chia dữ liệu, khóa test, chỉ số, đánh giá chéo, mô hình
+│   ├── modeling.py            # Bước 6-8: chia dữ liệu, khóa test, chỉ số, đánh giá chéo, mô hình
+│   └── predict.py             # Bước 9: dự đoán, giải thích ("tắt thẻ"), gợi ý sản phẩm tốt hơn cho một sản phẩm
+├── dashboard/app.py           # Bước 9: giao diện Streamlit (chỉ giao diện, logic ở src/predict.py)
+├── .streamlit/config.toml     # cấu hình dashboard (tắt gửi thống kê sử dụng, ẩn nút Deploy, màu chính)
 ├── sql/
 │   ├── init_raw_db.sql        # tạo bảng raw_products (JSONB)
 │   ├── audit_queries.sql      # 11 truy vấn kiểm toán dữ liệu thô
@@ -84,6 +88,25 @@ LightGBM thì `artifacts/best_model.joblib` có thể không mở được.
 Tập test 20% (`split == "test"` trong `data/final/split.parquet`) bị khóa: mã chỉ trả về tập này khi gọi
 `select_test(..., final=True)`, và chỉ notebook 06 được gọi (test tự động kiểm tra). Mô hình được chốt ở notebook 05
 trước khi mở test; tập test đã mở một lần ngày 07/11/2026 và mô hình không được chỉnh lại sau đó.
+
+## Dashboard (Bước 9)
+Cần có `artifacts/best_model.joblib` và `data/final/clean_*.parquet` (chạy notebook 04, 05 trước). Từ thư mục gốc:
+```bat
+streamlit run dashboard\app.py
+```
+Trình duyệt mở `http://localhost:8501`.
+- **Tab Dự đoán:**
+  - nhập mã vạch của một sản phẩm trong dữ liệu (ví dụ `3457221000505`, có hạng thật để so), hoặc tự nhập thành phần
+    (tiếng Anh, theo thứ tự trên bao bì), phụ gia, nhóm sản phẩm, NOVA, quốc gia;
+  - kết quả gồm hạng dự đoán, xác suất 5 hạng (có cảnh báo khi độ tự tin dưới 50%), giải thích bằng "tắt thẻ", và các
+    sản phẩm cùng nhóm có hạng tốt hơn với thành phần giống nhất.
+- **Tab Tổng quan:** chỉ số trên tập test, ma trận nhầm lẫn, thẻ kéo hạng, phân bố hạng theo nhóm và thị trường.
+
+Ảnh chụp: `reports/figures/dashboard_01_du_doan_ma_vach.png` (mã vạch), `dashboard_02_tu_nhap_chua_chac.png` (tự nhập,
+có cảnh báo độ tự tin thấp), `dashboard_03_tong_quan.png` (tab Tổng quan).
+
+Dashboard chỉ dùng mô hình đã đóng băng; không học lại và không dùng bảng dinh dưỡng. Thành phần tự nhập thiếu các
+"thẻ cha" mà Open Food Facts tự thêm (ví dụ `en:sugar` → `en:added-sugar`), nên kết quả kém chính xác hơn sản phẩm thật.
 
 ## Kiểm thử
 ```bat

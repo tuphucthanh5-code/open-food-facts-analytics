@@ -1,0 +1,13 @@
+# Cấu hình dashboard (streamlit run dashboard/app.py, chạy từ thư mục gốc dự án)
+[browser]
+gatherUsageStats = false   # không gửi thống kê sử dụng ra ngoài
+
+[server]
+port = 8501
+
+[client]
+toolbarMode = "minimal"    # ẩn nút Deploy (dashboard chỉ chạy trên máy)
+
+[theme]
+primaryColor = "#2563eb"   # xanh dương: không trùng 5 màu của hạng Nutri-Score (đỏ mặc định dễ nhầm với hạng E)
+paddingTop = "2rem"        # bớt khoảng trắng phía trên tiêu đề

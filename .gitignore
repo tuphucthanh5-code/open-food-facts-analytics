@@ -37,3 +37,6 @@ htmlcov/
 
 # Tệp dữ liệu cũ không còn dùng (giữ lại cục bộ)
 data/archive/
+
+# Bí mật của Streamlit (nếu có)
+.streamlit/secrets.toml

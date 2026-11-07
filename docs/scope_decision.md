@@ -335,3 +335,39 @@ tập) được viết lại.
   thông tin 16,0%, cùng công thức khác hạng 6,8%, đồ uống 5,3%, dữ liệu nghi sai 3,0%. Hạng thật khớp điểm theo ngưỡng 2023
   ở 97,3% sản phẩm test.
 - Lưu: `data/processed/test_predictions.parquet`, `reports/test_results.json`, hình `eval_01` đến `eval_04`.
+
+## Bước 9: dashboard Streamlit (07/11/2026)
+
+**Quyết định.**
+- Dashboard chỉ **nạp mô hình đã đóng băng** (`artifacts/best_model.joblib`); không học lại, không dùng bảng dinh dưỡng.
+- Tách hai tệp: `src/predict.py` (logic: tạo dòng từ dữ liệu nhập, dự đoán, giải thích, gợi ý) và `dashboard/app.py`
+  (chỉ giao diện). Lý do: logic test được bằng pytest và giải thích được trước hội đồng mà không cần mở giao diện.
+- Hai cách nhập: (1) **mã vạch** của một sản phẩm trong 29.904 sản phẩm sạch (có hạng thật để so, ví dụ mặc định
+  `3457221000505`); (2) **tự nhập** thành phần tiếng Anh theo thứ tự trên bao bì, đổi thành thẻ `en:` bằng `slugify`
+  (`to_tags`), cùng phụ gia, thẻ danh mục, quốc gia (chọn trong danh sách thẻ mô hình biết), nhóm `pnns_groups_1/2`, NOVA.
+  Hạn chế đã ghi trên giao diện: tự nhập thiếu các "thẻ cha" mà Open Food Facts tự thêm nên kém chính xác hơn.
+- Giải thích bằng **"tắt thẻ"** (giống notebook 06), không dùng SHAP (lý do ở mục Đánh giá cuối).
+- **Cảnh báo** khi độ tự tin dưới 50% và hiện hai hạng khả năng nhất (trên tập test nhóm này chỉ đúng 38,2%).
+- **Gợi ý sản phẩm thay thế** (kế hoạch cũ: Tab 3): sản phẩm cùng `pnns_groups_2`, hạng thật tốt hơn hạng dự đoán, thành
+  phần giống nhất theo cosine trên các cột thành phần của mô hình. Gộp vào tab Dự đoán thay vì tab riêng cho gọn.
+- Tab Tổng quan đọc `reports/test_results.json` và hình đã lưu; biểu đồ phân bố hạng theo nhóm có lọc thị trường.
+- `streamlit==1.67.0` ghim trong `requirements.txt` (cài với ràng buộc `-c requirements.txt` để không đổi phiên bản
+  pandas, scikit-learn, lightgbm). `.streamlit/config.toml` tắt gửi thống kê sử dụng.
+- Sửa lỗi: chú thích tiếng Việt có dấu trong `requirements.txt` (thêm ngày 07/11) làm `pip install -r` trên Windows báo
+  `UnicodeDecodeError` (pip đọc bằng cp1252). Đã đổi sang ASCII và thêm test kiểm tra.
+- Test: `tests/test_predict.py` (mô hình nhỏ học trên dữ liệu giả), `tests/test_dashboard.py` (chạy cả app bằng
+  `streamlit.testing.v1.AppTest`, tự bỏ qua nếu máy không có mô hình và dữ liệu). Tổng 125 test.
+
+**Chỉnh giao diện sau khi xem ảnh chụp (08/11/2026).** Chụp dashboard bằng Chrome chạy ngầm (không cần mở trình duyệt)
+rồi sửa những gì thấy trên ảnh; mô hình, logic `src/predict.py` và số liệu không đổi.
+- Biểu đồ "Vì sao?" không xếp theo độ lớn như hàm `explain` trả về (Vega-Lite tự sắp lại khi `sort=None`): truyền thẳng
+  thứ tự vào trục. Nhãn trục bị cắt chữ ("thành phần: gluc…"): tăng `labelLimit`.
+- Biểu đồ phân bố hạng theo nhóm bỏ nhóm dưới 30 sản phẩm: "alcoholic beverages" chỉ có 4 sản phẩm có hạng mà vẫn vẽ thành
+  một thanh đầy, dễ hiểu sai. Thêm số sản phẩm vào tên nhóm, xếp nhóm theo tỷ lệ A + B.
+- Số trên trang viết kiểu Việt Nam (0,635; 29.904) cho khớp báo cáo; xác suất hiện thành phần trăm trên cột.
+- Tên cột bảng sản phẩm thay thế bằng tiếng Việt, độ giống hiện bằng thanh; kết quả đặt trong khung viền.
+- Chọn cách nhập, NOVA, thị trường bằng nút bấm (`st.segmented_control`) thay cho radio, ô chọn.
+- `.streamlit/config.toml`: ẩn nút Deploy (chỉ chạy trên máy), màu chính xanh dương thay cho đỏ mặc định (dễ nhầm với
+  màu hạng E).
+- Ảnh lưu ở `reports/figures/dashboard_01_du_doan_ma_vach.png`, `dashboard_02_tu_nhap_chua_chac.png`,
+  `dashboard_03_tong_quan.png`, đã chèn vào hai báo cáo Word.

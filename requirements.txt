@@ -1,5 +1,6 @@
-# Ghim đúng phiên bản đã dùng để học và lưu artifacts/best_model.joblib (Python 3.11.9).
-# Khác phiên bản scikit-learn/lightgbm thì tệp .joblib có thể không mở được hoặc dự đoán khác.
+# Ghim dung phien ban da dung de hoc va luu artifacts/best_model.joblib (Python 3.11.9).
+# Khac phien ban scikit-learn/lightgbm thi tep .joblib co the khong mo duoc. Giu tep nay chi co ky tu ASCII
+# (pip tren Windows doc tep bang bang ma cp1252, chu co dau se bao loi).
 psycopg2-binary==2.9.13
 python-dotenv==1.2.4
 pandas==3.0.6
@@ -13,3 +14,4 @@ optuna==5.0.0
 joblib==1.6.0
 matplotlib==3.11.2
 seaborn==0.13.2
+streamlit==1.67.0

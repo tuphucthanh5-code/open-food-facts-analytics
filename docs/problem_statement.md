@@ -20,12 +20,15 @@ Bản đầy đủ, có số liệu chạy trực tiếp: `notebooks/01_bai_toan
   3. Nhóm đặc trưng nào đóng góp nhiều nhất, và NOVA bổ sung bao nhiêu so với riêng thành phần?
 - **Tiêu chí thành công:** Macro-F1 > 0,412 và QWK > 0,463 (đường cơ sở `pnns_groups_2`, 5 fold trên dev);
   ≥ 85% dự đoán lệch tối đa 1 hạng; đo một lần trên tập test 20% đã khóa; không dùng dinh dưỡng hay thẻ lộ đáp án.
+- **Kết quả (tập test, notebook 06, 07/11/2026): đạt cả 4 tiêu chí.** Macro-F1 0,635 (KTC 95% 0,616–0,652) so với đường
+  cơ sở 0,414; QWK 0,758 so với 0,462; 88,5% lệch ≤ 1 hạng; chênh với dev chỉ +0,010 Macro-F1. Trả lời 3 câu hỏi nghiên
+  cứu: notebook 06 mục 8.17.
 
 ## 2. Analytic Approach
 - Descriptive/diagnostic: EDA (notebook 03). Predictive: **phân loại 5 lớp có thứ tự** (A < B < C < D < E).
 - Thuật toán: 2 đường cơ sở, Logistic Regression, Decision Tree, Random Forest, LightGBM (tinh chỉnh bằng Optuna).
 - Chỉ số chính Macro-F1; thêm Accuracy, Precision, Recall, QWK, ROC-AUC, tỷ lệ lệch ≤ 1 hạng.
-- Kiểm định: chia theo thương hiệu (StratifiedGroupKFold), test 20% khóa đến bước đánh giá cuối.
+- Kiểm định: chia theo thương hiệu (StratifiedGroupKFold), test 20% khóa đến bước đánh giá cuối (notebook 06).
 
 ## 3. Data Requirements
 - **Đầu vào (đặc trưng):** thành phần, phụ gia, danh mục (`categories_tags`, `pnns_groups_1/2`), NOVA, nhãn bao bì,
@@ -46,7 +49,8 @@ Bảng dinh dưỡng chỉ dùng để EDA, **không** đưa vào đặc trưng 
 
 ## Giới hạn đã biết
 - Tập huấn luyện gồm sản phẩm đã có bảng dinh dưỡng; sản phẩm thiếu dinh dưỡng thực tế có thể khác về loại hàng và thương hiệu.
-- Mô hình không biết *lượng* thành phần nên khó phân biệt hai hạng kề nhau.
+- Mô hình không biết *lượng* thành phần nên khó phân biệt hai hạng kề nhau: trên test, 67% lỗi chỉ lệch 1 hạng và 36%
+  lỗi thuộc sản phẩm có điểm sát ranh giới giữa hai hạng.
 - Công thức Nutri-Score có nhiều phiên bản và dump không ghi phiên bản. Chẩn đoán ở Bước 4 (bản mã cũ): 94,0% khớp cả hai
   bảng ngưỡng, chỉ 0,1% chỉ khớp bản 2017, nên nhãn gần như theo bản 2023; không lọc, ghi là hạn chế.
 - Dữ liệu nghiêng về Mỹ (38%) và Pháp (29%).

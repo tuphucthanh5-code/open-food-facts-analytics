@@ -8,7 +8,7 @@ REQUIRED_FILES = [
     ".gitignore", ".env.example", "README.md", "requirements.txt", "requirements-dev.txt", "pytest.ini",
     "sql/init_raw_db.sql", "sql/audit_queries.sql", "sql/extract_products.sql",
     "src/__init__.py", "src/db.py", "src/fetch_from_dump.py", "src/load_raw_to_postgres.py", "src/cleaning.py",
-    "src/features.py", "src/modeling.py",
+    "src/features.py", "src/modeling.py", "src/predict.py", "dashboard/app.py", ".streamlit/config.toml",
     "notebooks/01_bai_toan.ipynb", "notebooks/02_thu_thap_du_lieu.ipynb", "notebooks/03_eda.ipynb",
     "notebooks/04_chuan_bi_du_lieu.ipynb", "notebooks/05_mo_hinh.ipynb", "notebooks/06_danh_gia.ipynb",
     "docs/problem_statement.md", "docs/scope_decision.md", "docs/data_dictionary.md",
@@ -54,10 +54,18 @@ def test_no_hardcoded_secret_or_email_in_src(root):
 def test_requirements_cover_libraries(root):
     reqs = (root / "requirements.txt").read_text(encoding="utf-8").lower()
     for lib in ("psycopg2", "python-dotenv", "pandas", "pyarrow", "duckdb", "scipy", "scikit-learn", "lightgbm",
-                "optuna", "joblib", "matplotlib", "seaborn"):
+                "optuna", "joblib", "matplotlib", "seaborn", "streamlit"):
         assert lib in reqs, f"requirements.txt thiếu {lib}"
 
 
 def test_readme_mentions_license_and_tests(root):
     text = (root / "README.md").read_text(encoding="utf-8")
     assert "ODbL" in text and "pytest" in text
+
+
+def test_requirements_pinned_and_ascii(root):
+    """pip tren Windows doc requirements bang cp1252: chu co dau se lam pip bao loi; moi thu vien phai ghim ==."""
+    text = (root / "requirements.txt").read_bytes()
+    assert text.isascii(), "requirements.txt chi duoc chua ky tu ASCII"
+    libs = [ln for ln in text.decode().splitlines() if ln.strip() and not ln.startswith("#")]
+    assert all("==" in ln for ln in libs), "moi thu vien trong requirements.txt phai ghim phien ban"

@@ -1,7 +1,8 @@
 # Giải thích mã nguồn (tài liệu học để thuyết trình và "code lại trước hội đồng")
 
 Mã đã được rút gọn ngày 05/11/2026 theo quy trình 9 bước của giảng viên: **notebook là sản phẩm chính**, `src/` chỉ
-giữ những hàm dùng lại nhiều lần. Toàn bộ mã Python còn 717 dòng (trước đó 3.719 dòng), cộng 187 dòng SQL.
+giữ những hàm dùng lại nhiều lần. Toàn bộ mã Python còn 717 dòng (trước đó 3.719 dòng), cộng 187 dòng SQL; Bước 9 thêm `src/predict.py`
+(107 dòng) và giao diện `dashboard/app.py` (mục 7b).
 Đọc theo thứ tự: mục 1 (bức tranh), mục 2 (SQL), mục 3-7 (từng tệp `src/`), mục 8 (notebook), mục 9 (câu hỏi hay gặp),
 mục 10 (gõ lại nhanh những hàm quan trọng nhất). Notebook 06 (đánh giá cuối trên tập test) ở mục 8.
 
@@ -27,6 +28,9 @@ food.parquet (8 GB)  ──DuckDB SQL──►  data/raw/*.jsonl.gz  ──INSER
                                                                             │ notebook 06: mở test MỘT lần (select_test final=True)
                                                                             ▼
                                   test_predictions.parquet, reports/test_results.json (kết quả khách quan)
+                                                                            │ src/predict.py (Bước 9)
+                                                                            ▼
+                                  dashboard/app.py (Streamlit): dự đoán, giải thích, sản phẩm thay thế
 ```
 
 Hai ý quyết định cả thiết kế (hội đồng hay hỏi):
@@ -175,6 +179,34 @@ Phần bỏ so với bản cũ (`evaluate.py` 649 + `train.py` 711 dòng): báo 
 
 ---
 
+## 7b. `src/predict.py` (107 dòng) và `dashboard/app.py` (Bước 9)
+
+`src/predict.py` là phần logic của dashboard; `dashboard/app.py` chỉ vẽ giao diện và gọi các hàm này.
+
+| Hàm | Làm gì | Vì sao viết vậy |
+|---|---|---|
+| `load_model()` | `joblib.load("artifacts/best_model.joblib")["model"]` | Mô hình đã đóng băng; dashboard không học lại |
+| `to_tags(text)` | `"Sugar, whole milk powder"` → `["en:sugar", "en:whole-milk-powder"]`, giữ thứ tự | Thẻ của Open Food Facts có dạng `en:` + chữ thường nối bằng `-`; dùng lại `slugify` của `cleaning.py` |
+| `make_row(...)` | một dòng DataFrame đủ 27 cột như `clean_features`; tự tính số thành phần, số phụ gia, số quốc gia | Pipeline của mô hình nhận đúng dạng dữ liệu đã dùng lúc học |
+| `predict(model, row)` | xác suất 5 hạng | `predict_proba` của Pipeline |
+| `explain(model, row, grade)` | "tắt thẻ": nhân bản dòng, bản thứ i đặt cột thẻ thứ i về 0, dự đoán lại; trả về xác suất giảm bao nhiêu | Cùng cách với notebook 06; không dùng SHAP vì sai số học trên cây sâu |
+| `ingredient_matrix(model, X)` | ma trận 0/1 các cột thành phần của mọi sản phẩm | Tính một lần (1,4 giây), dashboard giữ trong bộ nhớ đệm |
+| `alternatives(...)` | sản phẩm cùng `pnns_groups_2`, hạng thật tốt hơn, cosine thành phần cao nhất | Gợi ý "đổi sang sản phẩm này" dễ hiểu và kiểm tra được |
+
+Trong `app.py`: `@st.cache_resource` / `@st.cache_data` để nạp mô hình, dữ liệu và ma trận đúng một lần (Streamlit chạy
+lại cả tệp mỗi lần người dùng bấm); `show_prediction()` vẽ kết quả; hai tab "Dự đoán" và "Tổng quan kết quả".
+Các điểm hay bị hỏi:
+- Biểu đồ vẽ bằng Altair (`proba_chart`, `explain_chart`, `grade_mix_chart`), màu 5 hạng theo màu chính thức Nutri-Score
+  (`COLORS`). Ô chữ cái màu (`grade_badge`) là đoạn HTML nhỏ qua `st.html` vì Streamlit không có phần tử tô màu tùy ý.
+- `vn()` đổi số sang kiểu Việt Nam (0,635 và 29.904) cho chữ trên trang; trục biểu đồ vẫn dùng dấu chấm như hình notebook.
+- Chọn cách nhập, NOVA, thị trường bằng `st.segmented_control` (ít lựa chọn nên hiện hết, không cần mở danh sách).
+- Biểu đồ phân bố hạng bỏ nhóm dưới 30 sản phẩm (ví dụ "alcoholic beverages" chỉ có 4 sản phẩm có hạng: tỷ lệ không
+  đáng tin).
+- `.streamlit/config.toml`: tắt gửi thống kê, ẩn nút Deploy, màu chính xanh dương (đỏ mặc định dễ nhầm với hạng E).
+- Ảnh chụp dashboard: `reports/figures/dashboard_01` đến `dashboard_03`.
+
+---
+
 ## 8. Notebook
 
 | Notebook | Ô quan trọng nên nắm |
@@ -220,6 +252,9 @@ phần. 2.090 lỗi, 67% lệch 1 hạng; nguyên nhân lớn nhất là điểm
 | Bootstrap là gì, sao rút theo thương hiệu? | Rút lại có hoàn lại 1.000 lần để xem chỉ số dao động bao nhiêu. Sản phẩm cùng hãng giống nhau nên rút cả hãng một lúc, nếu không khoảng tin cậy hẹp hơn thực tế |
 | Sao không dùng SHAP? | Đã thử: tổng giá trị SHAP của LightGBM lệch tới 7,1 so với điểm thật vì cây quá sâu (tới 76 tầng). Giá trị sai thì không giải thích được. Dùng "tắt thẻ": đặt cột thẻ về 0, dự đoán lại, xem xác suất đổi bao nhiêu |
 | Calibration (ECE) là gì? | Kiểm tra xác suất có đáng tin: trong các sản phẩm mô hình tự tin 70% thì khoảng 70% phải đúng. ECE 0,047 là khá tốt, hơi tự tin quá ở khoảng giữa |
+| Dashboard có học lại mô hình không? | Không: chỉ nạp `best_model.joblib` đã đóng băng. Nhập mã vạch thì lấy dòng có sẵn trong dữ liệu sạch; tự nhập thì `make_row` tạo dòng cùng cột rồi đưa qua đúng Pipeline |
+| Sao tự nhập lại kém chính xác hơn? | Open Food Facts tự thêm "thẻ cha" (`en:sugar` kéo theo `en:added-sugar`, `en:disaccharide`); người dùng không gõ các thẻ đó, nên đầu vào khác dữ liệu lúc học |
+| Gợi ý sản phẩm thay thế tính thế nào? | Lọc sản phẩm cùng nhóm `pnns_groups_2` có hạng thật tốt hơn, rồi xếp theo độ giống cosine của vector thành phần 0/1 |
 | Mô hình sai ở đâu? | 67% lỗi chỉ lệch 1 hạng. Lớn nhất: điểm sát ranh giới (36%), sản phẩm khác điển hình của nhóm (ví dụ sô cô la hạng D bị đoán E), thiếu thông tin (16%). Gốc chung: không biết lượng đường/muối/chất béo |
 
 ---
