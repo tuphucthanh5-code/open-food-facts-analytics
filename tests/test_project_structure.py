@@ -10,7 +10,7 @@ REQUIRED_FILES = [
     "src/__init__.py", "src/db.py", "src/fetch_from_dump.py", "src/load_raw_to_postgres.py", "src/cleaning.py",
     "src/features.py", "src/modeling.py",
     "notebooks/01_bai_toan.ipynb", "notebooks/02_thu_thap_du_lieu.ipynb", "notebooks/03_eda.ipynb",
-    "notebooks/04_chuan_bi_du_lieu.ipynb", "notebooks/05_mo_hinh.ipynb",
+    "notebooks/04_chuan_bi_du_lieu.ipynb", "notebooks/05_mo_hinh.ipynb", "notebooks/06_danh_gia.ipynb",
     "docs/problem_statement.md", "docs/scope_decision.md", "docs/data_dictionary.md",
 ]
 

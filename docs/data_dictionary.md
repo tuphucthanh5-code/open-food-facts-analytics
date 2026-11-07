@@ -115,7 +115,9 @@ Pipeline `make_features()` nằm bên trong mô hình và chỉ fit trên phần
 | `labels` | `labels`, `analysis` | multi-hot `labels_tags`, `ingredients_analysis_tags` |
 | `countries` | `countries` | multi-hot `countries_tags` |
 
-Multi-hot (`CountVectorizer(binary=True)`) chỉ giữ thẻ có ở ≥ `min_freq` = 100 sản phẩm của tập fit; khoảng 900 đặc trưng.
+Multi-hot (`CountVectorizer(binary=True)`) chỉ giữ thẻ có ở ≥ `min_freq` = 100 sản phẩm của **tập fit**, nên số đặc trưng
+phụ thuộc lượng dữ liệu học: 908 trên phần học của fold 0 (19.139 dòng, notebook 04), 1.009 ở mô hình cuối học trên
+toàn bộ dev (23.922 dòng, `artifacts/best_model.joblib`).
 Không dùng làm đặc trưng: `row_id`, `code`, `group_id`, `brand`, `brands_tags` (thương hiệu là nhóm chia dữ liệu),
 `product_name`, `lang`, `last_modified`, `allergens_tags`, `ingredients_text`, các cờ chất lượng.
 
@@ -136,3 +138,19 @@ dict gồm: `model` (sklearn Pipeline `features` + `model`, đã học trên to�
 
 ### `reports/model_results.json`
 Mô hình tốt nhất, tham số Optuna, bảng so sánh (trung bình và độ lệch chuẩn 5 fold của mọi chỉ số), ablation.
+
+## 8. Kết quả notebook 06 (đánh giá cuối, tập test mở một lần)
+
+### `data/processed/test_predictions.parquet` (dự đoán trên tập test, 5.982 dòng)
+
+| Cột | Kiểu | Ý nghĩa |
+|---|---|---|
+| `row_id`, `code` | int, string | khóa |
+| `y_true`, `y_pred` | string | hạng thật và hạng dự đoán của mô hình đã chốt |
+| `nguyen_nhan_loi` | string | rỗng nếu đoán đúng; nếu sai: `dữ liệu nghi sai`, `sát ranh giới`, `cùng công thức, khác hạng`, `thiếu thông tin`, `đồ uống`, `khác` (cách gán: notebook 06 mục 8.16) |
+| `p_a` ... `p_e` | float | xác suất từng hạng |
+
+### `reports/test_results.json`
+Thời điểm mở test, vân tay, chỉ số trên test của mô hình và hai đường cơ sở, chỉ số dev để so, khoảng tin cậy 95%
+(bootstrap theo thương hiệu), kết quả theo thị trường và theo nhóm sản phẩm, kiểm tra độ nhạy (bỏ sản phẩm có bản sao
+ở dev), calibration, ablation trên test, ảnh hưởng của thẻ ("tắt thẻ"), bảng nguyên nhân lỗi.

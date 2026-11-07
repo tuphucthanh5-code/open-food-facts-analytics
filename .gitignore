@@ -34,3 +34,6 @@ logs/*.log
 # Kiểm thử và báo cáo độ phủ
 .coverage
 htmlcov/
+
+# Tệp dữ liệu cũ không còn dùng (giữ lại cục bộ)
+data/archive/

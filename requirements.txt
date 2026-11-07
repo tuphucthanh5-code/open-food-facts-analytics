@@ -1,13 +1,15 @@
-psycopg2-binary
-python-dotenv
-pandas
-pyarrow
-duckdb
-numpy
-scipy
-scikit-learn
-lightgbm
-optuna
-joblib
-matplotlib
-seaborn
+# Ghim đúng phiên bản đã dùng để học và lưu artifacts/best_model.joblib (Python 3.11.9).
+# Khác phiên bản scikit-learn/lightgbm thì tệp .joblib có thể không mở được hoặc dự đoán khác.
+psycopg2-binary==2.9.13
+python-dotenv==1.2.4
+pandas==3.0.6
+pyarrow==25.0.1
+duckdb==1.5.6
+numpy==2.4.6
+scipy==1.17.1
+scikit-learn==1.9.1
+lightgbm==4.7.0
+optuna==5.0.0
+joblib==1.6.0
+matplotlib==3.11.2
+seaborn==0.13.2

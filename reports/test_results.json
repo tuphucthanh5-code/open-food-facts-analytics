@@ -1,0 +1,418 @@
+{
+  "opened": "2026-11-07 22:57",
+  "fingerprint": "2e511eab89b680b7",
+  "model": "LightGBM (Optuna)",
+  "n_test": 5982,
+  "test": {
+    "Đường cơ sở: hạng phổ biến nhất": {
+      "macro_f1": 0.0885,
+      "accuracy": 0.2842,
+      "precision": 0.0568,
+      "recall": 0.2,
+      "qwk": 0.0,
+      "within_one": 0.5221,
+      "roc_auc": 0.5,
+      "log_loss": 1.559
+    },
+    "Đường cơ sở: theo pnns_groups_2": {
+      "macro_f1": 0.4137,
+      "accuracy": 0.4612,
+      "precision": 0.4495,
+      "recall": 0.4247,
+      "qwk": 0.4623,
+      "within_one": 0.733,
+      "roc_auc": 0.7582,
+      "log_loss": 1.2695
+    },
+    "LightGBM (Optuna)": {
+      "macro_f1": 0.6349,
+      "accuracy": 0.6506,
+      "precision": 0.6322,
+      "recall": 0.6386,
+      "qwk": 0.7581,
+      "within_one": 0.8847,
+      "roc_auc": 0.8937,
+      "log_loss": 0.8813
+    }
+  },
+  "dev_cv": {
+    "macro_f1": 0.6249,
+    "accuracy": 0.6434,
+    "precision": 0.6274,
+    "recall": 0.6234,
+    "qwk": 0.7679,
+    "within_one": 0.894,
+    "roc_auc": 0.887,
+    "log_loss": 0.9108
+  },
+  "ci95": {
+    "trên test": {
+      "macro_f1": 0.635,
+      "qwk": 0.758,
+      "accuracy": 0.651,
+      "within_one": 0.885,
+      "Macro-F1 hơn đường cơ sở": 0.221
+    },
+    "2,5%": {
+      "macro_f1": 0.616,
+      "qwk": 0.724,
+      "accuracy": 0.631,
+      "within_one": 0.87,
+      "Macro-F1 hơn đường cơ sở": 0.202
+    },
+    "97,5%": {
+      "macro_f1": 0.652,
+      "qwk": 0.788,
+      "accuracy": 0.67,
+      "within_one": 0.898,
+      "Macro-F1 hơn đường cơ sở": 0.24
+    }
+  },
+  "by_market": [
+    {
+      "thị trường": "Bán ở Pháp",
+      "số dòng test": 1754,
+      "Macro-F1 test": 0.6828,
+      "Macro-F1 dev": 0.6498
+    },
+    {
+      "thị trường": "Bán ở Mỹ",
+      "số dòng test": 2266,
+      "Macro-F1 test": 0.6097,
+      "Macro-F1 dev": 0.6222
+    },
+    {
+      "thị trường": "Còn lại",
+      "số dòng test": 1985,
+      "Macro-F1 test": 0.6168,
+      "Macro-F1 dev": 0.6056
+    }
+  ],
+  "by_group": [
+    {
+      "nhóm pnns_groups_1": "composite foods",
+      "số dòng test": 392,
+      "Macro-F1 test": 0.4585,
+      "accuracy test": 0.5663,
+      "lệch ≤ 1 hạng": 0.8622,
+      "Macro-F1 dev": 0.4208
+    },
+    {
+      "nhóm pnns_groups_1": "missing",
+      "số dòng test": 1167,
+      "Macro-F1 test": 0.4877,
+      "accuracy test": 0.5493,
+      "lệch ≤ 1 hạng": 0.8226,
+      "Macro-F1 dev": 0.5069
+    },
+    {
+      "nhóm pnns_groups_1": "sugary snacks",
+      "số dòng test": 989,
+      "Macro-F1 test": 0.5279,
+      "accuracy test": 0.8038,
+      "lệch ≤ 1 hạng": 0.9707,
+      "Macro-F1 dev": 0.5124
+    },
+    {
+      "nhóm pnns_groups_1": "fish meat eggs",
+      "số dòng test": 500,
+      "Macro-F1 test": 0.5304,
+      "accuracy test": 0.596,
+      "lệch ≤ 1 hạng": 0.852,
+      "Macro-F1 dev": 0.5321
+    },
+    {
+      "nhóm pnns_groups_1": "fruits and vegetables",
+      "số dòng test": 332,
+      "Macro-F1 test": 0.5755,
+      "accuracy test": 0.6958,
+      "lệch ≤ 1 hạng": 0.8825,
+      "Macro-F1 dev": 0.569
+    },
+    {
+      "nhóm pnns_groups_1": "fats and sauces",
+      "số dòng test": 418,
+      "Macro-F1 test": 0.5939,
+      "accuracy test": 0.6124,
+      "lệch ≤ 1 hạng": 0.8732,
+      "Macro-F1 dev": 0.5916
+    },
+    {
+      "nhóm pnns_groups_1": "salty snacks",
+      "số dòng test": 220,
+      "Macro-F1 test": 0.5994,
+      "accuracy test": 0.6227,
+      "lệch ≤ 1 hạng": 0.9545,
+      "Macro-F1 dev": 0.5142
+    },
+    {
+      "nhóm pnns_groups_1": "beverages",
+      "số dòng test": 660,
+      "Macro-F1 test": 0.603,
+      "accuracy test": 0.603,
+      "lệch ≤ 1 hạng": 0.8106,
+      "Macro-F1 dev": 0.6656
+    },
+    {
+      "nhóm pnns_groups_1": "cereals and potatoes",
+      "số dòng test": 722,
+      "Macro-F1 test": 0.6259,
+      "accuracy test": 0.6676,
+      "lệch ≤ 1 hạng": 0.9114,
+      "Macro-F1 dev": 0.5886
+    },
+    {
+      "nhóm pnns_groups_1": "milk and dairy products",
+      "số dòng test": 582,
+      "Macro-F1 test": 0.6779,
+      "accuracy test": 0.7423,
+      "lệch ≤ 1 hạng": 0.9399,
+      "Macro-F1 dev": 0.6006
+    }
+  ],
+  "sensitivity": {
+    "toàn bộ test": {
+      "số dòng": 5982.0,
+      "macro_f1": 0.6349,
+      "accuracy": 0.6506,
+      "precision": 0.6322,
+      "recall": 0.6386,
+      "qwk": 0.7581,
+      "within_one": 0.8847
+    },
+    "bỏ sản phẩm có bản sao": {
+      "số dòng": 5708.0,
+      "macro_f1": 0.6209,
+      "accuracy": 0.6388,
+      "precision": 0.6183,
+      "recall": 0.6243,
+      "qwk": 0.7436,
+      "within_one": 0.8803
+    },
+    "chỉ sản phẩm có bản sao": {
+      "số dòng": 274.0,
+      "macro_f1": 0.8827,
+      "accuracy": 0.8978,
+      "precision": 0.8968,
+      "recall": 0.8752,
+      "qwk": 0.9549,
+      "within_one": 0.9745
+    }
+  },
+  "calibration": {
+    "ece": 0.0469,
+    "share_conf_ge_0_8": 0.3653,
+    "acc_conf_ge_0_8": 0.8924
+  },
+  "ablation_test": [
+    {
+      "cấu hình": "đủ nhóm (mô hình đã chốt)",
+      "Macro-F1 test": 0.6349,
+      "QWK test": 0.7581,
+      "Macro-F1 dev": 0.6249,
+      "thay đổi trên test": 0.0
+    },
+    {
+      "cấu hình": "chỉ thành phần (ingredients + position)",
+      "Macro-F1 test": 0.5673,
+      "QWK test": 0.6572,
+      "Macro-F1 dev": 0.557,
+      "thay đổi trên test": -0.0676
+    },
+    {
+      "cấu hình": "thành phần + NOVA",
+      "Macro-F1 test": 0.5675,
+      "QWK test": 0.6644,
+      "Macro-F1 dev": 0.559,
+      "thay đổi trên test": -0.0674
+    },
+    {
+      "cấu hình": "bỏ categories",
+      "Macro-F1 test": 0.5804,
+      "QWK test": 0.6849,
+      "Macro-F1 dev": 0.566,
+      "thay đổi trên test": -0.0545
+    },
+    {
+      "cấu hình": "bỏ ingredients",
+      "Macro-F1 test": 0.6028,
+      "QWK test": 0.7212,
+      "Macro-F1 dev": 0.593,
+      "thay đổi trên test": -0.0321
+    },
+    {
+      "cấu hình": "bỏ nova",
+      "Macro-F1 test": 0.6341,
+      "QWK test": 0.7556,
+      "Macro-F1 dev": 0.624,
+      "thay đổi trên test": -0.0008
+    }
+  ],
+  "tag_effect_top": [
+    {
+      "thẻ": "thành phần: olive",
+      "số sản phẩm test có thẻ": 45,
+      "P(D/E) tăng thêm nhờ thẻ": 0.0787875874
+    },
+    {
+      "thẻ": "thành phần: coconut-oil",
+      "số sản phẩm test có thẻ": 175,
+      "P(D/E) tăng thêm nhờ thẻ": 0.0744679441
+    },
+    {
+      "thẻ": "thành phần: oily-fish",
+      "số sản phẩm test có thẻ": 80,
+      "P(D/E) tăng thêm nhờ thẻ": 0.0644507967
+    },
+    {
+      "thẻ": "thành phần: pineapple-juice",
+      "số sản phẩm test có thẻ": 34,
+      "P(D/E) tăng thêm nhờ thẻ": 0.0641899126
+    },
+    {
+      "thẻ": "thành phần: cashew-nuts",
+      "số sản phẩm test có thẻ": 75,
+      "P(D/E) tăng thêm nhờ thẻ": 0.0520515586
+    },
+    {
+      "thẻ": "thành phần: e252",
+      "số sản phẩm test có thẻ": 46,
+      "P(D/E) tăng thêm nhờ thẻ": 0.0514866217
+    },
+    {
+      "thẻ": "thành phần: grape-juice",
+      "số sản phẩm test có thẻ": 49,
+      "P(D/E) tăng thêm nhờ thẻ": 0.0451369875
+    },
+    {
+      "thẻ": "thành phần: butter",
+      "số sản phẩm test có thẻ": 286,
+      "P(D/E) tăng thêm nhờ thẻ": 0.0418241802
+    },
+    {
+      "thẻ": "thành phần: raisin",
+      "số sản phẩm test có thẻ": 69,
+      "P(D/E) tăng thêm nhờ thẻ": 0.0367651511
+    },
+    {
+      "thẻ": "thành phần: rennet",
+      "số sản phẩm test có thẻ": 100,
+      "P(D/E) tăng thêm nhờ thẻ": 0.0346464039
+    },
+    {
+      "thẻ": "thành phần: e339",
+      "số sản phẩm test có thẻ": 114,
+      "P(D/E) tăng thêm nhờ thẻ": 0.0337537439
+    },
+    {
+      "thẻ": "thành phần: breadcrumbs",
+      "số sản phẩm test có thẻ": 66,
+      "P(D/E) tăng thêm nhờ thẻ": 0.0306738976
+    },
+    {
+      "thẻ": "thành phần: cranberry",
+      "số sản phẩm test có thẻ": 73,
+      "P(D/E) tăng thêm nhờ thẻ": 0.0291690559
+    },
+    {
+      "thẻ": "thành phần: smoke",
+      "số sản phẩm test có thẻ": 34,
+      "P(D/E) tăng thêm nhờ thẻ": 0.0289533255
+    },
+    {
+      "thẻ": "thành phần: animal",
+      "số sản phẩm test có thẻ": 389,
+      "P(D/E) tăng thêm nhờ thẻ": 0.0285492551
+    }
+  ],
+  "tag_effect_bottom": [
+    {
+      "thẻ": "thành phần: bay-leaf",
+      "số sản phẩm test có thẻ": 40,
+      "P(D/E) tăng thêm nhờ thẻ": -0.0313464138
+    },
+    {
+      "thẻ": "thành phần: cabbage",
+      "số sản phẩm test có thẻ": 40,
+      "P(D/E) tăng thêm nhờ thẻ": -0.0334131367
+    },
+    {
+      "thẻ": "thành phần: cumin",
+      "số sản phẩm test có thẻ": 60,
+      "P(D/E) tăng thêm nhờ thẻ": -0.0341303787
+    },
+    {
+      "thẻ": "thành phần: broth",
+      "số sản phẩm test có thẻ": 80,
+      "P(D/E) tăng thêm nhờ thẻ": -0.0343411522
+    },
+    {
+      "thẻ": "thành phần: water",
+      "số sản phẩm test có thẻ": 2120,
+      "P(D/E) tăng thêm nhờ thẻ": -0.0347022612
+    },
+    {
+      "thẻ": "thành phần: wholemeal-flour",
+      "số sản phẩm test có thẻ": 116,
+      "P(D/E) tăng thêm nhờ thẻ": -0.0357069636
+    },
+    {
+      "thẻ": "thành phần: sweetener",
+      "số sản phẩm test có thẻ": 87,
+      "P(D/E) tăng thêm nhờ thẻ": -0.0387022631
+    },
+    {
+      "thẻ": "thành phần: ham",
+      "số sản phẩm test có thẻ": 44,
+      "P(D/E) tăng thêm nhờ thẻ": -0.0430525897
+    },
+    {
+      "thẻ": "thành phần: chia",
+      "số sản phẩm test có thẻ": 30,
+      "P(D/E) tăng thêm nhờ thẻ": -0.0469307094
+    },
+    {
+      "thẻ": "thành phần: salad",
+      "số sản phẩm test có thẻ": 40,
+      "P(D/E) tăng thêm nhờ thẻ": -0.0503732199
+    }
+  ],
+  "error_causes": [
+    {
+      "nguyên nhân": "cùng công thức, khác hạng",
+      "mọi lỗi": 142,
+      "40 lỗi tự tin nhất": 1,
+      "tỷ lệ (mọi lỗi)": 0.068
+    },
+    {
+      "nguyên nhân": "dữ liệu nghi sai",
+      "mọi lỗi": 63,
+      "40 lỗi tự tin nhất": 1,
+      "tỷ lệ (mọi lỗi)": 0.03
+    },
+    {
+      "nguyên nhân": "khác",
+      "mọi lỗi": 681,
+      "40 lỗi tự tin nhất": 14,
+      "tỷ lệ (mọi lỗi)": 0.326
+    },
+    {
+      "nguyên nhân": "sát ranh giới",
+      "mọi lỗi": 759,
+      "40 lỗi tự tin nhất": 16,
+      "tỷ lệ (mọi lỗi)": 0.363
+    },
+    {
+      "nguyên nhân": "thiếu thông tin",
+      "mọi lỗi": 335,
+      "40 lỗi tự tin nhất": 6,
+      "tỷ lệ (mọi lỗi)": 0.16
+    },
+    {
+      "nguyên nhân": "đồ uống",
+      "mọi lỗi": 110,
+      "40 lỗi tự tin nhất": 2,
+      "tỷ lệ (mọi lỗi)": 0.053
+    }
+  ]
+}

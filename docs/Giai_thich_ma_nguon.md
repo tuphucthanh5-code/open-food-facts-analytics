@@ -3,7 +3,7 @@
 Mã đã được rút gọn ngày 05/11/2026 theo quy trình 9 bước của giảng viên: **notebook là sản phẩm chính**, `src/` chỉ
 giữ những hàm dùng lại nhiều lần. Toàn bộ mã Python còn 717 dòng (trước đó 3.719 dòng), cộng 187 dòng SQL.
 Đọc theo thứ tự: mục 1 (bức tranh), mục 2 (SQL), mục 3-7 (từng tệp `src/`), mục 8 (notebook), mục 9 (câu hỏi hay gặp),
-mục 10 (gõ lại nhanh những hàm quan trọng nhất).
+mục 10 (gõ lại nhanh những hàm quan trọng nhất). Notebook 06 (đánh giá cuối trên tập test) ở mục 8.
 
 ---
 
@@ -24,6 +24,9 @@ food.parquet (8 GB)  ──DuckDB SQL──►  data/raw/*.jsonl.gz  ──INSER
                                                                             │ src/features.py + src/modeling.py (notebook 05)
                                                                             ▼
                                   artifacts/best_model.joblib, oof_predictions.parquet, reports/model_results.json
+                                                                            │ notebook 06: mở test MỘT lần (select_test final=True)
+                                                                            ▼
+                                  test_predictions.parquet, reports/test_results.json (kết quả khách quan)
 ```
 
 Hai ý quyết định cả thiết kế (hội đồng hay hỏi):
@@ -181,13 +184,19 @@ Phần bỏ so với bản cũ (`evaluate.py` 649 + `train.py` 711 dòng): báo 
 | 03 | A1-A8 SQL kiểm toán; B2 describe; B5 IQR; B9 tương quan (chứng minh dinh dưỡng là đáp án); B11 danh mục; B13 lift; B15 logo Nutri-Score |
 | 04 | phễu làm sạch; hai lớp chống rò rỉ; tạo lại tập chia giống hệt + vân tay; `select_test` bị chặn; vector đặc trưng của sản phẩm ví dụ |
 | 05 | `run()` + `cross_validate`; lưới C và độ sâu; Optuna; bảng so sánh; ma trận nhầm lẫn; giữ lại Pháp; ablation; đặc trưng quan trọng |
+| 06 | kiểm tra vân tay rồi `select_test(final=True)` (chỉ ở đây); bảng test so với dev; bootstrap theo thương hiệu; bỏ sản phẩm có bản sao; calibration; ô kiểm tra SHAP thất bại và hàm `without` ("tắt thẻ"); `explain(i)`; bảng nguyên nhân lỗi |
 
 Sản phẩm ví dụ xuyên suốt: "Caramel au beurre salé" (`3457221000505`, hạng E, thuộc dev).
 
-Kết quả chính của notebook 05 (5 fold dev, test còn khóa): LightGBM tinh chỉnh bằng Optuna Macro-F1 0,625 ± 0,007,
+Kết quả chính của notebook 05 (5 fold dev; notebook 05 không dùng tập test): LightGBM tinh chỉnh bằng Optuna Macro-F1 0,625 ± 0,007,
 QWK 0,768, accuracy 0,643, 89,4% dự đoán lệch ≤ 1 hạng; đường cơ sở `pnns_groups_2` 0,412 / 0,463. Random Forest 0,606,
 LightGBM mặc định 0,599, Logistic Regression 0,562, Decision Tree 0,516. Bỏ danh mục giảm 0,058, bỏ thành phần giảm 0,032;
 các nhóm khác ≤ 0,006. Bản mã cũ dài gấp 5 lần đạt cùng Macro-F1 0,625.
+
+Kết quả notebook 06 (tập test, mở một lần ngày 07/11/2026): Macro-F1 **0,635** (KTC 95% 0,616–0,652), QWK 0,758,
+accuracy 0,651, 88,5% lệch ≤ 1 hạng; đường cơ sở `pnns_groups_2` 0,414 / 0,462. Chênh với dev chỉ +0,010. Bỏ 274 sản phẩm
+có bản sao ở dev còn 0,621. Ablation trên test: bỏ danh mục −0,054, bỏ thành phần −0,032, NOVA +0,001 so với riêng thành
+phần. 2.090 lỗi, 67% lệch 1 hạng; nguyên nhân lớn nhất là điểm sát ranh giới (36%).
 
 ---
 
@@ -206,6 +215,12 @@ các nhóm khác ≤ 0,006. Bản mã cũ dài gấp 5 lần đạt cùng Macro-
 | Ngoại lai xử lý sao? | Chỉ loại giá trị phi lý (> 150 thành phần, 19 dòng); giá trị lớn nhưng thật (món ăn nhiều thành phần) giữ và lấy log |
 | Có kiểm tra rò rỉ trong giá trị không? | Có: logo Nutri-Score trong `labels_tags` (2.263 dòng) bị xóa; `assert_no_leaky_values` và `check_feature_names` kiểm tra lại |
 | Có dữ liệu cá nhân không? | Không: không đọc các cột đó từ dump (`COLUMNS`), SQL `truong_nhay_cam` xác nhận |
+| Tập test mở mấy lần? Sao biết không "nhìn trộm"? | Một lần, ở notebook 06. `select_test` báo lỗi nếu thiếu `final=True`; test tự động kiểm tra chỉ notebook 06 gọi, đúng một lần, sau khi kiểm tra vân tay. Code notebook 06 được chạy thử trước trên fold 0 của dev. Mô hình chốt ở notebook 05 và không chỉnh lại sau đó |
+| Điểm test (0,635) cao hơn dev (0,625) có lạ không? | Không: chênh 0,010 nhỏ hơn độ rộng khoảng tin cậy (0,616–0,652). Hai con số gần nhau cho thấy chọn tham số trên dev không làm điểm lạc quan |
+| Bootstrap là gì, sao rút theo thương hiệu? | Rút lại có hoàn lại 1.000 lần để xem chỉ số dao động bao nhiêu. Sản phẩm cùng hãng giống nhau nên rút cả hãng một lúc, nếu không khoảng tin cậy hẹp hơn thực tế |
+| Sao không dùng SHAP? | Đã thử: tổng giá trị SHAP của LightGBM lệch tới 7,1 so với điểm thật vì cây quá sâu (tới 76 tầng). Giá trị sai thì không giải thích được. Dùng "tắt thẻ": đặt cột thẻ về 0, dự đoán lại, xem xác suất đổi bao nhiêu |
+| Calibration (ECE) là gì? | Kiểm tra xác suất có đáng tin: trong các sản phẩm mô hình tự tin 70% thì khoảng 70% phải đúng. ECE 0,047 là khá tốt, hơi tự tin quá ở khoảng giữa |
+| Mô hình sai ở đâu? | 67% lỗi chỉ lệch 1 hạng. Lớn nhất: điểm sát ranh giới (36%), sản phẩm khác điển hình của nhóm (ví dụ sô cô la hạng D bị đoán E), thiếu thông tin (16%). Gốc chung: không biết lượng đường/muối/chất béo |
 
 ---
 
@@ -234,3 +249,18 @@ def relative_position(tags, words):
     return 0.0
 ```
 (Trong mã thật, `analyzer` là hàm `tag_list` đặt tên, vì hàm `lambda` không lưu được bằng joblib.)
+
+```python
+# Bootstrap theo thương hiệu (notebook 06, mục 8.9)
+rows_of_group = list(pd.Series(np.arange(n)).groupby(groups).indices.values())
+for _ in range(1000):
+    pick = rng.integers(0, len(rows_of_group), len(rows_of_group))   # rút thương hiệu có hoàn lại
+    ix = np.concatenate([rows_of_group[i] for i in pick])
+    boot.append(f1_score(t[ix], p[ix], average="macro"))
+np.quantile(boot, [0.025, 0.975])                                     # khoảng tin cậy 95%
+
+# "Tắt thẻ" (notebook 06, mục 8.15): ảnh hưởng của cột j lên xác suất D/E
+mask = np.ones(M.shape[1]); mask[j] = 0
+p_off = clf.predict_proba(M[rows].multiply(mask).tocsr())[:, [3, 4]].sum(axis=1)
+effect = (p_de[rows] - p_off).mean()
+```

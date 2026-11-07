@@ -282,3 +282,56 @@ tập) được viết lại.
 - Hạn chế mới: lưới độ sâu cây và `min_child_samples` của Optuna chạm cạnh (16 và 3); chênh giữa 5 lần thử tốt nhất chỉ
   0,002 nên mở rộng không đáng kể.
 
+- Số đặc trưng phụ thuộc lượng dữ liệu học (ngưỡng ≥ 100 sản phẩm đếm trên tập fit): 908 trên phần học của fold 0
+  (19.139 dòng), **1.009** ở mô hình cuối học trên toàn bộ dev (23.922 dòng). Ghi rõ ở `data_dictionary.md` mục 6.
+
+## Kiểm tra trước khi mở tập test và dọn dẹp (07/11/2026)
+
+- Rà toàn bộ dữ liệu và kết quả: vân tay test đúng, không nhóm nào ở cả dev và test, không rò rỉ, tỷ lệ hạng 5 fold giống
+  nhau đến 3 chữ số; tính lại chỉ số từ `oof_predictions.parquet` khớp `model_results.json`; 5 notebook không ô lỗi.
+- **Ghim phiên bản thư viện** trong `requirements.txt` (đúng phiên bản đã học mô hình: scikit-learn 1.9.1, lightgbm 4.7.0,
+  pandas 3.0.6, Python 3.11.9), vì tệp `.joblib` có thể không mở được với phiên bản khác. CI GitHub đổi Python 3.12 → 3.11
+  cho khớp máy.
+- Xóa `HUONG_DAN_BUOC_4.md` (hướng dẫn chép đè của mã cũ). Chuyển tệp dữ liệu không còn dùng (`staging_*.parquet`,
+  `clean_audit.parquet`, tệp dump lúc 18:00) vào `data/archive/` (cục bộ, không vào Git) thay vì xóa hẳn.
+- Phát hiện 274 sản phẩm test (4,6%) có cùng tên + thành phần hoặc cùng thành phần + danh mục với một sản phẩm dev
+  **khác thương hiệu** (sữa ít béo, dầu ô liu, nước khoáng...). Không phải lỗi chia (chia theo thương hiệu là đúng thiết
+  kế), nhưng đưa vào notebook 06 một phép kiểm tra độ nhạy: tính lại điểm khi bỏ các sản phẩm này.
+
+## Đánh giá cuối trên tập test (Bước 8, notebook 06, 07/11/2026 22:57)
+
+**Quyết định.**
+- Mở tập test **một lần** bằng `select_test(..., final=True)` trong `notebooks/06_danh_gia.ipynb`, với mô hình đã chốt ở
+  notebook 05 (`artifacts/best_model.joblib`, học trên toàn bộ dev). Test tự động bảo đảm chỉ notebook 06 gọi được hàm này,
+  đúng một lần, sau khi kiểm tra vân tay. Trước đó code của notebook 06 được chạy thử trên fold 0 của dev (bản nháp) để sửa
+  lỗi mà không nhìn tập test. Sau khi mở: **không chỉnh lại mô hình, tham số hay đặc trưng**.
+- **Không dùng SHAP.** Kiểm tra tính cộng (tổng giá trị SHAP phải bằng điểm của mô hình) thất bại: LightGBM `pred_contrib`
+  lệch tới 7,1 log-odds vì cây quá sâu (trung vị 39 tầng, sâu nhất 76; do Optuna chọn `num_leaves` 187,
+  `min_child_samples` 3), thuật toán TreeSHAP mất chính xác số học. Thay bằng **"tắt thẻ"** (đặt cột của một thẻ về 0 rồi
+  dự đoán lại): dùng đúng mô hình, không xấp xỉ, dễ giải thích; cũng dùng được trong dashboard.
+- Khoảng tin cậy bằng **bootstrap theo thương hiệu** (1.000 lần, seed 42) vì sản phẩm cùng hãng giống nhau.
+- Ablation trên test chỉ là phân tích (học lại các cấu hình bỏ nhóm trên dev, đo trên test); không dùng để chọn lại mô hình.
+- Phân tích lỗi dùng điểm Nutri-Score và bảng dinh dưỡng của sản phẩm test **chỉ để giải thích lỗi**, không đưa vào mô hình.
+
+**Kết quả (5.982 sản phẩm, 3.053 thương hiệu).**
+
+| Mô hình | Macro-F1 | QWK | Accuracy | Lệch ≤ 1 hạng |
+|---|---|---|---|---|
+| Đường cơ sở: hạng phổ biến nhất | 0,088 | 0,000 | 0,284 | 0,522 |
+| Đường cơ sở `pnns_groups_2` | 0,414 | 0,462 | 0,461 | 0,733 |
+| **LightGBM Optuna** | **0,635** (KTC 95% 0,616–0,652) | **0,758** (0,724–0,788) | **0,651** | **0,885** |
+
+- So với dev: Macro-F1 +0,010, QWK −0,010; ROC-AUC 0,894. Hơn đường cơ sở +0,221 Macro-F1 (KTC 95% 0,202–0,240).
+  Đạt cả 4 tiêu chí thành công của notebook 01.
+- F1 từng hạng: A 0,731, B 0,498, C 0,577, D 0,614, E 0,755. 23,4% lệch 1 hạng, 7,5% lệch 2, 4,0% lệch 3–4.
+- Thị trường: Pháp 0,683, Mỹ 0,610, nước khác 0,617. Nhóm khó nhất: món ăn hỗn hợp 0,458, thiếu nhóm 0,488, bánh kẹo ngọt
+  0,528 (accuracy 80%); dễ nhất sữa 0,678. Đồ uống 0,603 (dev 0,666).
+- Độ nhạy: bỏ 274 sản phẩm có bản sao ở dev còn Macro-F1 0,621, QWK 0,744 (nhóm có bản sao: 0,883).
+- Calibration: ECE 0,047, hơi tự tin quá ở khoảng giữa; tự tin ≥ 80% (36,5% sản phẩm) đúng 89,2%; < 50% (21,4%) đúng 38,2%.
+- Ablation trên test: bỏ danh mục −0,054, bỏ thành phần −0,032, bỏ NOVA −0,001; chỉ thành phần 0,567, thêm NOVA 0,568.
+- "Tắt thẻ": kéo về D/E là ô liu, dầu dừa, cá nhiều dầu, nước ép dứa/nho, hạt điều, E252, bơ, nho khô, rennet, E339; kéo
+  lên là rau trộn, hạt chia, giăm bông, chất tạo ngọt, bột nguyên cám, nước.
+- Lỗi (2.090, 67% lệch 1 hạng): sát ranh giới điểm 36,3%, khác 32,6% (chủ yếu sản phẩm khác điển hình của nhóm), thiếu
+  thông tin 16,0%, cùng công thức khác hạng 6,8%, đồ uống 5,3%, dữ liệu nghi sai 3,0%. Hạng thật khớp điểm theo ngưỡng 2023
+  ở 97,3% sản phẩm test.
+- Lưu: `data/processed/test_predictions.parquet`, `reports/test_results.json`, hình `eval_01` đến `eval_04`.

@@ -1,9 +1,11 @@
-"""Notebook là sản phẩm nộp chính: phải chạy hết, có kết quả, không mở tập test, không lộ bí mật."""
+"""Notebook là sản phẩm nộp chính: phải chạy hết, có kết quả, không lộ bí mật.
+Chỉ notebook 06 (đánh giá cuối) được mở tập test, và chỉ một lần."""
 import json
 
 import pytest
 
-NOTEBOOKS = ["01_bai_toan", "02_thu_thap_du_lieu", "03_eda", "04_chuan_bi_du_lieu", "05_mo_hinh"]
+NOTEBOOKS = ["01_bai_toan", "02_thu_thap_du_lieu", "03_eda", "04_chuan_bi_du_lieu", "05_mo_hinh", "06_danh_gia"]
+FINAL_NOTEBOOK = "06_danh_gia"
 FORBIDDEN = ["final=True", ".env", "DB_PASSWORD", "password", "overwrite"]
 
 
@@ -29,6 +31,12 @@ def test_notebook_rules(root, name):
     cells = code_cells(load(root, name))
     assert "os.chdir(root)" in "".join(cells[0]["source"])
     code = "\n".join("".join(c["source"]) for c in cells)
-    found = [p for p in FORBIDDEN if p in code]
+    found = [p for p in FORBIDDEN if p in code and not (p == "final=True" and name == FINAL_NOTEBOOK)]
     assert not found, f"notebook chứa mẫu bị cấm: {found}"
     assert 'to_parquet("data/final/split.parquet"' not in code, "notebook không được ghi đè tập chia đã khóa"
+
+
+def test_only_final_notebook_opens_test_once(root):
+    code = "\n".join("".join(c["source"]) for c in code_cells(load(root, FINAL_NOTEBOOK)))
+    assert code.count("select_test(") == 1 and code.count("final=True") == 1
+    assert "2e511eab89b680b7" in code, "notebook 06 phải kiểm tra vân tay tập test trước khi mở"
